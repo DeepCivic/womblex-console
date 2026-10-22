@@ -7,8 +7,8 @@ call it and shape the answer for a screen:
 - **Run store** — `store/remote.is_remote_uri` / `storage_options_from_env`
   describe how the console is configured to reach state; the live
   reachability check is the same `RemoteStore.list_dirs` read
-  `womblex.ui.dashboard` already performs to find checkpoints.
-- **Job queue** — `womblex.ui.dashboard.queue_section` is reused rather than
+  `womblex_console.dashboard` already performs to find checkpoints.
+- **Job queue** — `womblex_console.dashboard.queue_section` is reused rather than
   reimplemented: it is already "connect, read stats/workers/stale jobs,
   report a failure instead of raising", which is exactly what the queue
   card's fleet + queue-depth state needs.
@@ -34,14 +34,15 @@ from urllib.parse import urlsplit, urlunsplit
 
 from womblex.config import EmbeddingConfig, EnrichmentConfig
 from womblex.store.remote import is_remote_uri, storage_options_from_env
-from womblex.ui import dashboard
-from womblex.ui.deps import UISettings
 from womblex.utils.isaacus_client import (
     API_KEY_ENV,
     endpoints_from_env,
     misconfigured_endpoints_var,
     unserved_models,
 )
+
+from womblex_console import dashboard
+from womblex_console.deps import UISettings
 
 logger = logging.getLogger(__name__)
 

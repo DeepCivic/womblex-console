@@ -8,13 +8,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from womblex.ui import resources
-from womblex.ui.app import create_app
-from womblex.ui.deps import resolve_settings
+from womblex_console import resources
+from womblex_console.app import create_app
+from womblex_console.deps import resolve_settings
 
 
 class TestResourcesApi:
@@ -32,7 +30,6 @@ class TestResourcesApi:
         }
 
     def test_store_card_remote_flags_object_store(self, tmp_path: Path) -> None:
-        pytest.importorskip("fsspec")
         client = TestClient(create_app(store_uri=f"s3://{tmp_path}/bucket"))
         card = client.get("/api/resources").json()["store"]
         assert card["kind"] == "remote"
@@ -44,7 +41,6 @@ class TestResourcesApi:
         """A plain dir used as ``store_uri`` (fsspec's local backend, as
         the ``api_client`` fixture in ``conftest.py`` does) is real for
         ``settings.is_remote``, but it is not an object store."""
-        pytest.importorskip("fsspec")
         client = TestClient(create_app(store_uri=str(tmp_path / "store")))
         card = client.get("/api/resources").json()["store"]
         assert card["kind"] == "remote"
@@ -101,7 +97,6 @@ class TestResourcesApi:
         }
 
     def test_ingest_card_configured_local(self, tmp_path: Path) -> None:
-        pytest.importorskip("fsspec")
         ingest_root = tmp_path / "inbox"
         client = TestClient(create_app(
             store_uri=str(tmp_path / "store"), ingest_uri=str(ingest_root),
@@ -120,7 +115,6 @@ class TestResourcesApi:
 
     def test_test_ingest_unreachable_reports_rather_than_raises(self, tmp_path: Path) -> None:
         """No store configured, so the disjointness check never runs."""
-        pytest.importorskip("fsspec")
         client = TestClient(create_app(
             output_root=tmp_path, ingest_uri="not-a-real-protocol://nope",
         ))
@@ -227,7 +221,6 @@ class TestResourcesApi:
         assert body["error"]
 
     def test_test_store_remote_reachable(self, tmp_path: Path) -> None:
-        pytest.importorskip("fsspec")
         client = TestClient(create_app(store_uri=str(tmp_path / "store")))
         assert client.post("/api/resources/test/store").json() == {
             "reachable": True, "error": None,
@@ -238,7 +231,6 @@ class TestResourcesApi:
     ) -> None:
         """An unknown fsspec protocol fails synchronously, no network needed —
         the same "report, don't 500" contract as the queue's unreachable test."""
-        pytest.importorskip("fsspec")
         client = TestClient(create_app(store_uri="not-a-real-protocol://nope"))
         body = client.post("/api/resources/test/store").json()
         assert body["reachable"] is False
@@ -318,7 +310,6 @@ class TestResourcesApi:
         listing completed. Pinned because the two verdicts look like a bug
         until you know which question each is answering.
         """
-        pytest.importorskip("fsspec")
         missing = tmp_path / "gone"
         local = TestClient(create_app(output_root=missing))
         remote = TestClient(create_app(store_uri=str(missing)))

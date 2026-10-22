@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import Request
-
 from womblex.store.remote import assert_disjoint_locations
 
 

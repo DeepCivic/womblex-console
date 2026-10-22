@@ -170,7 +170,7 @@ def get_preset(name: str) -> Preset | None:
 #
 # Besides the built-ins above (code), an operator can *save* a composed config
 # as a named starting point of their own. Each lands as one JSON file — one file
-# per record, so two saves can't lose each other. *Where* that file sits is ``womblex.ui.readers``' call, not this
+# per record, so two saves can't lose each other. *Where* that file sits is ``womblex_console.readers``' call, not this
 # module's: locally under a writable ``presets_dir``, remotely under the store's
 # own ``presets/`` prefix (a sibling of ``runs/``), so a
 # store-backed console needs no writable mount. This module owns only the

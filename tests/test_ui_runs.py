@@ -1,4 +1,4 @@
-"""Console run read routes: run list, manifest, stage presence, audit, logs and chunk detail (womblex.ui).
+"""Console run read routes: run list, manifest, stage presence, audit, logs and chunk detail (womblex_console).
 
 Runs are plain directories with real, schema-correct manifest shards (no
 fixture PDFs needed). The ``api_client`` fixture parametrizes every API test
@@ -14,11 +14,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-
-pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
-
-from tests._ui_helpers import _ROWS, _write_consolidated_manifest, _write_manifest_shard
 from womblex.store.enrichment_output import (
     ENRICHMENT_ENTITIES_SUFFIX,
     ENTITY_SCHEMA,
@@ -28,7 +24,9 @@ from womblex.store.money_output import MONEY_SPANS_SCHEMA, MONEY_SPANS_SUFFIX
 from womblex.store.output import CHUNKS_SCHEMA, CHUNKS_SUFFIX
 from womblex.store.pii_output import PII_SPANS_SCHEMA, PII_SPANS_SUFFIX
 from womblex.store.quality_output import CHUNK_QUALITY_SCHEMA, CHUNK_QUALITY_SUFFIX
-from womblex.ui import readers
+
+from tests._ui_helpers import _ROWS, _write_consolidated_manifest, _write_manifest_shard
+from womblex_console import readers
 
 
 class TestRunsApi:

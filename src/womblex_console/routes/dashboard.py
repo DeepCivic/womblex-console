@@ -1,7 +1,7 @@
 """``/api/dashboard`` — queue state and per-stage progress.
 
 Read-only, like every other console route: it calls
-:mod:`womblex.ui.dashboard`, which reads the job queue and the checkpoints
+:mod:`womblex_console.dashboard`, which reads the job queue and the checkpoints
 the pipeline already writes. Nothing here requeues, cancels or claims — the
 dashboard names a stalled job, a worker recovers it.
 """
@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from womblex.ui import dashboard
-from womblex.ui.deps import UISettings, get_settings
+from womblex_console import dashboard
+from womblex_console.deps import UISettings, get_settings
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

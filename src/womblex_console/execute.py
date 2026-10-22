@@ -7,25 +7,27 @@ ingest preflight behind the composer's "N documents ready" line.
 
 "Log streaming" is the queue's own job-status transitions
 (`RunBoard.list_jobs`) plus the per-stage checkpoints
-:mod:`womblex.ui.dashboard` already reads — a batch-granular feed, labelled
+:mod:`womblex_console.dashboard` already reads — a batch-granular feed, labelled
 as such, not a fabricated line-by-line log the pipeline does not emit.
 """
 from __future__ import annotations
 
 import logging
 
-from womblex.cli._shared import NestedCorpusError, normalise_prefix
+from womblex.cli._shared import NestedCorpusError
 from womblex.cloud.dispatch import (
     EnqueueResult,
     ExecutionCapability,
     ExecutionDisabled,
     StageDispatchResult,
-    _supported_under,
     enqueue_downstream_stages,
     enqueue_extraction,
     execution_status,
+    owned_prefix,
+    supported_keys,
 )
-from womblex.ui.deps import UISettings
+
+from womblex_console.deps import UISettings
 
 __all__ = [
     "EnqueueResult",
@@ -45,7 +47,7 @@ def ingest_preflight(settings: UISettings, *, input_prefix: str | None = None) -
     """Reachability + document count of the ingest location *input_prefix* names.
 
     Feeds the composer's "N documents ready" line through
-    :func:`_supported_under` — the listing the enqueue itself uses — so the
+    :func:`~womblex.cloud.dispatch.supported_keys` — the listing the enqueue itself uses — so the
     count shown is the count that press would enqueue, for the *same*
     ingest-relative prefix the composer then posts.
 
@@ -61,7 +63,7 @@ def ingest_preflight(settings: UISettings, *, input_prefix: str | None = None) -
     Raises ``ValueError`` on a prefix that escapes the ingest root (→ 400),
     which is where the enqueue refuses it too.
     """
-    prefix = normalise_prefix(input_prefix)
+    prefix = owned_prefix(None, input_prefix)
     empty: dict[str, object] = {
         "uri": settings.ingest_uri, "input_prefix": prefix, "kind": None,
         "reachable": False, "document_count": 0, "sample": [],
@@ -69,11 +71,11 @@ def ingest_preflight(settings: UISettings, *, input_prefix: str | None = None) -
     }
     if not settings.ingest_uri:
         return {**empty, "error": "no ingest location configured"}
-    from womblex.store.remote import is_remote_uri
+    from womblex.store.remote import RemoteStore, is_remote_uri
 
     kind = "remote" if is_remote_uri(settings.ingest_uri) else "local"
     try:
-        _, keys = _supported_under(settings, prefix)
+        _, keys = supported_keys(RemoteStore.from_uri(settings.ingest_uri), settings.ingest_uri, prefix)
     except NestedCorpusError as e:
         # The count must be the count that would be enqueued, so a layout the
         # enqueue will refuse reports the refusal here rather than a number.

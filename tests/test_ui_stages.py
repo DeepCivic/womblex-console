@@ -15,12 +15,10 @@ from pathlib import Path
 from typing import Self
 
 import pytest
-
-pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
-
 from womblex.pipeline_order import DOWNSTREAM_STAGES
-from womblex.ui.app import create_app
+
+from womblex_console.app import create_app
 
 
 class _FakeQueue:

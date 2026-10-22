@@ -17,9 +17,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, ValidationError
 
-from womblex.ui import composer, readers
-from womblex.ui.deps import UISettings, get_settings
-from womblex.ui.readers import StoreUnreachable
+from womblex_console import composer, readers
+from womblex_console.deps import UISettings, get_settings
+from womblex_console.readers import StoreUnreachable
 
 router = APIRouter(prefix="/api/composer", tags=["composer"])
 

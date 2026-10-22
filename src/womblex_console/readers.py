@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, cast
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-
 from womblex.store.enrichment_output import (
     ENRICHMENT_ENTITIES_SUFFIX,
     ENTITY_SCHEMA,
@@ -37,9 +36,10 @@ from womblex.store.quality_output import CHUNK_QUALITY_SCHEMA, CHUNK_QUALITY_SUF
 from womblex.store.retention import STAGE_SUFFIXES, RunDescription, describe_run, list_runs
 from womblex.store.run_manifest import RUN_MANIFEST_FILENAME
 from womblex.store.shard_audit import ARCHIVE_SUFFIX, audit_shard_directory
-from womblex.ui import presets as presets_mod
-from womblex.ui.deps import UISettings
-from womblex.ui.presets import Preset
+
+from womblex_console import presets as presets_mod
+from womblex_console.deps import UISettings
+from womblex_console.presets import Preset
 
 if TYPE_CHECKING:
     from womblex.store.remote import RemoteStore
@@ -235,7 +235,7 @@ def _log_entry(name: str, size: int, mtime: float) -> dict:
 # saving to a local ``presets_dir`` would 409 there. The store branch writes /
 # lists / deletes under the store's own ``presets/`` prefix (a sibling of
 # ``runs/``), and the container needs no writable mount.
-# ``womblex.ui.presets`` owns the *format* (filename, bytes, parsing); these
+# ``womblex_console.presets`` owns the *format* (filename, bytes, parsing); these
 # functions own *where* it sits, the same split the rest of this module keeps.
 
 
@@ -263,7 +263,7 @@ def save_preset(
     formats: tuple[str, ...],
     config: dict,
 ) -> Preset:
-    """Save one preset; return the saved :class:`~womblex.ui.presets.Preset`.
+    """Save one preset; return the saved :class:`~womblex_console.presets.Preset`.
 
     The overlay is validated before either branch writes (a preset that would
     not load is refused, not stored). Raises ``ValueError`` on an unsafe name,

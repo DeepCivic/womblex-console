@@ -1,4 +1,4 @@
-"""Console dashboard: queue reads and per-stage checkpoint progress (womblex.ui)."""
+"""Console dashboard: queue reads and per-stage checkpoint progress (womblex_console)."""
 from __future__ import annotations
 
 import json
@@ -6,13 +6,11 @@ from pathlib import Path
 from typing import Self
 
 import pytest
-
-pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from tests._ui_helpers import _ROWS, _write_manifest_shard
-from womblex.ui import dashboard
-from womblex.ui.app import create_app
+from womblex_console import dashboard
+from womblex_console.app import create_app
 
 
 def _write_checkpoint(run_dir: Path, stage: str, **counters: int) -> None:

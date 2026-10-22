@@ -20,7 +20,6 @@ from typing import Any
 
 import yaml
 from pydantic import ValidationError
-
 from womblex.cloud.stage_contracts import (
     DISCOVERY_SUFFIXES,
     PRODUCER_OF,
@@ -29,7 +28,8 @@ from womblex.cloud.stage_contracts import (
 )
 from womblex.config import DatasetConfig, PathsConfig, WomblexConfig
 from womblex.store.remote import is_remote_uri
-from womblex.ui.deps import UISettings
+
+from womblex_console.deps import UISettings
 
 #: Extraction is not itself a `StageContract` — it runs inside
 #: `process_batch`, not `run-stage` — but every stage's element-stream

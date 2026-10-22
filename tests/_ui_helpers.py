@@ -8,11 +8,7 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-
 from womblex.store.output import ELEMENTS_SUFFIX, MANIFEST_SCHEMA
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-
 
 _OK_ROW = {
     "source_hash": "hash-a", "collection_id": "test", "doc_id": "doc-a",

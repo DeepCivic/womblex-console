@@ -1,15 +1,13 @@
-"""Console execution: enqueue dispatch and ingest preflight (womblex.ui)."""
+"""Console execution: enqueue dispatch and ingest preflight (womblex_console)."""
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Self
 
 import pytest
-
-pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from womblex.ui.app import create_app
+from womblex_console.app import create_app
 
 
 class _FakeQueue:
@@ -103,7 +101,6 @@ class TestExecuteApi:
         assert resp.status_code == 409
 
     def test_enqueue_conflict_without_an_ingest_location(self, tmp_path: Path) -> None:
-        pytest.importorskip("fsspec")
         client = TestClient(create_app(
             store_uri=str(tmp_path / "store"), db_dsn="postgresql://x/y",
         ))
@@ -111,7 +108,6 @@ class TestExecuteApi:
         assert resp.status_code == 409
 
     def test_enqueue_conflict_without_a_queue(self, tmp_path: Path) -> None:
-        pytest.importorskip("fsspec")
         client = TestClient(create_app(
             store_uri=str(tmp_path / "store"), ingest_uri=str(tmp_path / "inbox"),
         ))
@@ -122,7 +118,6 @@ class TestExecuteApi:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An empty ingest root is bad input (400), not a disabled console (403/409)."""
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", ["notes.txt"])  # unsupported ext
@@ -138,7 +133,6 @@ class TestExecuteApi:
     ) -> None:
         """List the whole ingest root (no prefix posted), batch, one idempotent
         row each, stamped with the ingest root."""
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", [f"doc-{i}.pdf" for i in range(5)])
@@ -170,7 +164,6 @@ class TestExecuteApi:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The extraction press carries the composer's config to every worker (Phase R, D7)."""
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", ["doc.pdf"])
@@ -189,7 +182,6 @@ class TestExecuteApi:
         """P11: a run ingests what is directly under the location it is given.
         The console refuses the same layout the local CLI does, as bad input,
         and nothing reaches the queue."""
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         _FakeQueue.last = None
         ingest_root = tmp_path / "inbox"
@@ -212,7 +204,6 @@ class TestExecuteApi:
         """P12: preview and dispatch cannot disagree about which documents a
         press will run — the count the preflight reports for a prefix is the
         count that prefix enqueues, and the keys are scoped to it."""
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "2026-08", ["a.pdf", "b.pdf"])
@@ -238,7 +229,6 @@ class TestExecuteApi:
         """A queued key is downloaded by the worker and recorded as the
         document's `source_relpath`, so a prefix spelled `./2026-08` must not
         publish provenance naming a key that only a local path would resolve."""
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "2026-08", ["a.pdf"])
@@ -258,7 +248,6 @@ class TestExecuteApi:
     ) -> None:
         """Bad input (400), before any listing, and nothing reaches the queue —
         the treatment an unsafe run id already gets."""
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         _FakeQueue.last = None
         ingest_root = tmp_path / "inbox"
@@ -276,7 +265,6 @@ class TestExecuteApi:
     def test_enqueue_mints_a_run_id_when_omitted(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        pytest.importorskip("fsspec")
         monkeypatch.setattr("womblex.cloud.jobs.RunBoard", _FakeQueue)
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", ["doc-0.pdf"])
@@ -321,7 +309,6 @@ class TestIngestPreflight:
         documents, with a count each and the prefix that selects one — the
         recovery the message describes, made selectable from this screen
         instead of from the CLI."""
-        pytest.importorskip("fsspec")
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", ["top.pdf"])
         _seed_store_inputs(ingest_root, "2026-08/health", ["nested.pdf"])
@@ -343,7 +330,6 @@ class TestIngestPreflight:
     ) -> None:
         """The subdirectory prefixes are ingest-relative, so one press deeper
         selects the next level rather than restarting from the root."""
-        pytest.importorskip("fsspec")
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "2026-08/health", ["nested.pdf"])
         client = TestClient(create_app(
@@ -359,7 +345,6 @@ class TestIngestPreflight:
         """P12: the recovery the refusal names works, from the refusal alone —
         the prefix it hands back previews as a count, with no second tool and
         nothing for the operator to compose by hand."""
-        pytest.importorskip("fsspec")
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", ["top.pdf"])
         _seed_store_inputs(ingest_root, "2026-08", ["a.pdf", "b.pdf"])
@@ -381,7 +366,6 @@ class TestIngestPreflight:
         """Spelling-by-spelling normalisation is pinned on the shared rule in
         `test_discovery_parity`; what this holds is that the preflight echoes
         the normalised prefix, since that string is what the composer posts."""
-        pytest.importorskip("fsspec")
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "2026-08", ["a.pdf"])
         client = TestClient(create_app(
@@ -395,7 +379,6 @@ class TestIngestPreflight:
 
     def test_a_prefix_escaping_the_ingest_root_is_refused(self, tmp_path: Path) -> None:
         """Same footing as the unsafe-run-id check: 400, and no listing."""
-        pytest.importorskip("fsspec")
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", ["top.pdf"])
         _seed_store_inputs(tmp_path / "elsewhere", "", ["secret.pdf"])
@@ -408,7 +391,6 @@ class TestIngestPreflight:
         assert "unsafe input_prefix" in resp.json()["detail"]
 
     def test_reachable_ingest_reports_count_and_sample(self, tmp_path: Path) -> None:
-        pytest.importorskip("fsspec")
         ingest_root = tmp_path / "inbox"
         _seed_store_inputs(ingest_root, "", [f"doc-{i}.pdf" for i in range(3)])
         client = TestClient(create_app(

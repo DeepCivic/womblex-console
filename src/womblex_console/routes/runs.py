@@ -1,6 +1,6 @@
 """``/api/runs`` — the run selector's data source.
 
-Read-only: calls nothing but ``womblex.ui.readers``, which calls nothing but
+Read-only: calls nothing but ``womblex_console.readers``, which calls nothing but
 existing ``store/`` readers. No pipeline logic lives here.
 """
 from __future__ import annotations
@@ -9,11 +9,11 @@ from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
-
 from womblex.store.retention import STAGE_SUFFIXES
-from womblex.ui import readers
-from womblex.ui.deps import UISettings, get_settings
-from womblex.ui.readers import StoreUnreachable
+
+from womblex_console import readers
+from womblex_console.deps import UISettings, get_settings
+from womblex_console.readers import StoreUnreachable
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 

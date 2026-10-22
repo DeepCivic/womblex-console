@@ -1,16 +1,14 @@
-"""Console settings, store-unreachable degradation, SPA mount and the `womblex ui` CLI (womblex.ui)."""
+"""Console settings, store-unreachable degradation, SPA mount and the `womblex ui` CLI (womblex_console)."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
-
-pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from womblex.ui import readers
-from womblex.ui.app import create_app
-from womblex.ui.deps import UISettings, resolve_settings
+from womblex_console import readers
+from womblex_console.app import create_app
+from womblex_console.deps import UISettings, resolve_settings
 
 
 class TestUISettings:
@@ -201,7 +199,7 @@ class TestSpaMount:
         before it ever reaches the server, which would let this pass without
         exercising the containment check at all.
         """
-        from womblex.ui.app import resolve_spa_path
+        from womblex_console.app import resolve_spa_path
 
         secret = tmp_path / "secret.txt"
         secret.write_text("outside the SPA root")

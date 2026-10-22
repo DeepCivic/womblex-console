@@ -12,7 +12,7 @@ Two sources, both already written by the pipeline:
   readable from the run the console is already pointed at, in both
   deployments, with no configuration of its own.
 
-Separate from :mod:`womblex.ui.readers` because none of this is a parquet
+Separate from :mod:`womblex_console.readers` because none of this is a parquet
 sidecar read: the queue is Postgres and the checkpoints are JSON.
 """
 from __future__ import annotations
@@ -28,7 +28,8 @@ from womblex.cloud.stage_contracts import STAGE_CONTRACTS
 from womblex.pipeline_order import sort_by_pipeline
 from womblex.store.checkpoint import CHECKPOINT_GLOB, CheckpointProgress, read_checkpoints
 from womblex.store.retention import is_safe_run_id
-from womblex.ui.deps import UISettings
+
+from womblex_console.deps import UISettings
 
 if TYPE_CHECKING:
     from womblex.store.remote import RemoteStore
@@ -225,7 +226,7 @@ def _remote_checkpoints(store_uri: str, run_id: str) -> dict[str, list[Checkpoin
     """Stage each run's checkpoint JSONs into a temp dir and read them locally.
 
     Checkpoints are a few KB apiece, so this stays the same
-    stage-then-reuse-the-local-reader pattern :mod:`womblex.ui.readers` uses
+    stage-then-reuse-the-local-reader pattern :mod:`womblex_console.readers` uses
     for manifests — one definition of what a checkpoint file means.
     """
     from womblex.store.remote import RemoteStore

@@ -1,16 +1,13 @@
-"""Console Pipeline Composer: stage graph, config schema, validation and presets (womblex.ui)."""
+"""Console Pipeline Composer: stage graph, config schema, validation and presets (womblex_console)."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 import yaml
-
-pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from tests._ui_helpers import REPO_ROOT
-from womblex.ui.app import create_app
+from womblex_console.app import create_app
 
 _MINIMAL_CONFIG = {"dataset": {"name": "t"}}
 _NO_DATASET: dict = {}
@@ -146,48 +143,6 @@ class TestComposerApi:
     def test_unknown_preset_404s(self, client: TestClient) -> None:
         assert client.get("/api/composer/presets/nope").status_code == 404
 
-    def test_default_isaacus_config_file_ships_and_loads(self, client: TestClient) -> None:
-        """The preset is CLI-runnable: `configs/default-isaacus.yaml` exists and
-        `load_config` accepts it (a dev runs the per-stage sequence with it)."""
-        from womblex.config import load_config
-
-        cfg_path = REPO_ROOT / "configs" / "default-isaacus.yaml"
-        assert cfg_path.is_file(), "configs/default-isaacus.yaml is the CLI source of truth"
-        cfg = load_config(cfg_path)
-        # The stages the shape names are on.
-        assert cfg.chunking.enabled and cfg.chunking.chunking_model == "kanon-2-enricher"
-        assert cfg.enrichment.enabled
-        assert cfg.embedding.enabled
-        assert cfg.money.enabled
-        assert cfg.linking.enabled
-        assert not cfg.spellfix.enabled, "spellfix is a per-corpus opt-in"
-        # Text cleaning runs before enrich/chunk: the overlay both reassemble from.
-        assert cfg.processing.text_source == "normalised"
-        # AI chunking + enrich both on => reuse auto-wired, so no double enrich.
-        assert cfg.enrichment.persist_document is True
-
-    def test_config_file_and_ui_preset_agree(self, client: TestClient) -> None:
-        """The console preset mirrors the shipped config file; they must not drift
-        on the stage toggles/settings the preset carries."""
-        from womblex.config import load_config
-
-        cfg = load_config(REPO_ROOT / "configs" / "default-isaacus.yaml")
-        overlay = client.get("/api/composer/presets/DEFAULT-Isaacus").json()["config"]
-        assert overlay["chunking"]["chunk_size"] == cfg.chunking.chunk_size
-        assert overlay["chunking"]["chunking_model"] == cfg.chunking.chunking_model
-        assert overlay["chunking"]["overlap"] == cfg.chunking.overlap
-        # The stage toggles the preset carries agree with the config file.
-        assert overlay["enrichment"]["enabled"] == cfg.enrichment.enabled
-        assert overlay["embedding"]["enabled"] == cfg.embedding.enabled
-        assert overlay["money"]["enabled"] == cfg.money.enabled
-        assert overlay["money"]["default_currency"] == cfg.money.default_currency
-        assert overlay["linking"]["enabled"] == cfg.linking.enabled
-        # Neither carries spellfix: absent from the overlay, off in the config.
-        assert "spellfix" not in overlay and not cfg.spellfix.enabled
-        # The text-cleaning selector (which also gates normalise into the
-        # downstream dispatch, before enrich) agrees.
-        assert overlay["processing"]["text_source"] == cfg.processing.text_source
-
     def test_validate_accepts_a_minimal_config(self, client: TestClient) -> None:
         resp = client.post("/api/composer/validate", json=_MINIMAL_CONFIG)
         assert resp.json() == {"valid": True, "errors": []}
@@ -294,7 +249,6 @@ class TestComposerSavePresets:
     def _saving_client(self, tmp_path: Path, mode: str) -> TestClient:
         """A client that *can* save, in the given mode."""
         if mode == "remote":
-            pytest.importorskip("fsspec")
             return TestClient(create_app(store_uri=str(tmp_path / "store")))
         return TestClient(create_app(output_root=tmp_path, presets_dir=tmp_path / "presets"))
 
@@ -323,7 +277,6 @@ class TestComposerSavePresets:
     def test_remote_save_lands_under_the_store_presets_prefix(self, tmp_path: Path) -> None:
         """A store-backed console writes presets to `presets/`, a sibling of
         `runs/` — so the compose ui service needs no writable mount."""
-        pytest.importorskip("fsspec")
         store_root = tmp_path / "store"
         client = TestClient(create_app(store_uri=str(store_root)))
         resp = client.post("/api/composer/presets", json={

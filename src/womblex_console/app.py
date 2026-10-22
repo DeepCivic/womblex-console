@@ -11,8 +11,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from womblex.ui.deps import UISettings
-from womblex.ui.routes import composer, dashboard, execute, resources, runs
+from womblex_console.deps import UISettings
+from womblex_console.routes import composer, dashboard, execute, resources, runs
 
 # `ui/` is not vendored into the wheel — only Dockerfile.ui's builder stage
 # produces this directory, at the container's WORKDIR. Resolved from cwd
@@ -35,7 +35,7 @@ def create_app(
     """Build the console app, bound to one run source for its lifetime.
 
     Exactly one of ``output_root`` / ``store_uri`` must be given;
-    :class:`~womblex.ui.deps.UISettings` enforces that and raises
+    :class:`~womblex_console.deps.UISettings` enforces that and raises
     ``ValueError`` otherwise. Binding at construction rather than per request
     is what keeps the run source out of the URL space — no endpoint can be
     talked into reading a directory the operator did not mount.

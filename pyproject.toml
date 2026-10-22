@@ -1,0 +1,72 @@
+[project]
+name = "womblex-console"
+version = "0.1.0"
+description = "Operator console for Womblex: a read API and SPA over a run's artefacts, with the Pipeline Composer and Execution Controls"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "DeepCivic" }]
+
+# The console depends on a pinned Womblex and never the other way round. It
+# adapts when Womblex changes: move this pin and the imports together.
+dependencies = [
+    "womblex==0.5.12",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    # Upper-bounded for the reason Womblex bounds it: ruff widens its default
+    # rule set on minor releases.
+    "ruff>=0.16,<0.18",
+    "mypy",
+    # Starlette's TestClient transport, for the route tests.
+    "httpx>=0.27",
+    "types-PyYAML",
+]
+
+[project.scripts]
+womblex-console = "womblex_console.cli:main"
+
+[tool.uv.sources]
+# 0.5.12 is not on PyPI yet; track the commit it was cut from until it is, then
+# delete this table.
+womblex = { git = "https://github.com/DeepCivic/womblex", rev = "1b36fea297647562ac17ffcb0716b7408a10b46c" }
+
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# A reader that cannot stat, list or reach a store reports that and carries on:
+# one unreachable backend must not turn a status page into a 500. These handlers
+# are deliberate, so the rules are off here rather than silenced site by site.
+ignore = [
+    "BLE001",  # blind-except: the unreachable-backend handlers, by design
+    "S110",    # try-except-pass: best-effort probes with a documented fallback
+    "S112",    # try-except-continue: skip the unreadable record, keep listing
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["pyarrow", "pyarrow.*"]
+ignore_missing_imports = true

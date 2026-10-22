@@ -1,5 +1,10 @@
 # runwAI
 
+> **This repository is the Womblex console** — the operator UI that used to ship inside
+> [Womblex](https://github.com/DeepCivic/womblex) as `womblex ui`. What it is and how to run
+> it: [docs/console.md](docs/console.md). The rest of this file describes the runwAI template
+> it was created from.
+
 A template repository for people building software with an AI agent. It gives you two
 things:
 

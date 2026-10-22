@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from womblex.ui import dashboard, resources
-from womblex.ui.deps import UISettings, get_settings
+from womblex_console import dashboard, resources
+from womblex_console.deps import UISettings, get_settings
 
 router = APIRouter(prefix="/api/resources", tags=["resources"])
 

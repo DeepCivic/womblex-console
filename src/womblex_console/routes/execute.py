@@ -4,9 +4,9 @@ The one writable-to-a-run surface in the console. ``GET /status`` is a
 cheap, network-free read of whether this deployment can dispatch work (and
 if not, why); ``POST /enqueue`` plans an extraction run into the queue and
 ``POST /stages`` dispatches that run's downstream stages. All delegate to
-:mod:`womblex.ui.execute`, which enforces the store+ingest+queue requirement
+:mod:`womblex_console.execute`, which enforces the store+ingest+queue requirement
 before touching anything — this router only maps its
-:class:`~womblex.ui.execute.ExecutionDisabled` reasons onto HTTP status
+:class:`~womblex_console.execute.ExecutionDisabled` reasons onto HTTP status
 codes.
 
 The run/log feed is the queue's own view the Dashboard already serves
@@ -19,10 +19,19 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
-from womblex.ui import execute
-from womblex.ui.deps import UISettings, get_settings
+from womblex_console import execute
+from womblex_console.deps import UISettings, get_settings
 
 router = APIRouter(prefix="/api/execute", tags=["execute"])
+
+
+def _pinned(settings: UISettings) -> Any:
+    """*settings* as the Womblex release this pins types it (its own ``UISettings``).
+
+    The dispatch functions read the fields by name, so ours serves. The cast goes
+    when Womblex ships the fastapi-free deployment settings and we import them.
+    """
+    return settings
 
 #: `ExecutionDisabled.reason` -> HTTP status. A missing store, ingest location
 #: or queue is a wiring gap on an otherwise willing console (409 Conflict — the
@@ -60,7 +69,7 @@ class EnqueueRequest(BaseModel):
 @router.get("/status")
 def get_status(settings: UISettings = Depends(get_settings)) -> dict:  # noqa: B008 - FastAPI DI idiom
     """Whether the console can dispatch work, and which piece is missing if not."""
-    return execute.execution_status(settings).as_dict()
+    return execute.execution_status(_pinned(settings)).as_dict()
 
 
 @router.get("/ingest")
@@ -97,7 +106,7 @@ def post_enqueue(
     """
     try:
         result = execute.enqueue_extraction(
-            settings,
+            _pinned(settings),
             input_prefix=body.input_prefix,
             run_id=body.run_id,
             batch_size=body.batch_size,
@@ -142,7 +151,7 @@ def post_stages(
     """
     try:
         result = execute.enqueue_downstream_stages(
-            settings,
+            _pinned(settings),
             run_id=body.run_id,
             config=body.config,
             max_attempts=body.max_attempts,
