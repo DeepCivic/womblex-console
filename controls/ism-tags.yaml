@@ -1,0 +1,273 @@
+# Semantic tags for the ISM.
+#
+# STEAL: Section-level semantic tags for all 1101 ISM controls, with the code /
+# infrastructure / organisational surface judgement that says which of them a repository
+# could ever evidence. Contains no ISM text, so it is Apache-2.0 and carries no CC BY
+# obligation of its own.
+#
+# runwAI's judgement about what each part of the ISM is *about*, kept deliberately
+# separate from controls/ism-snapshot.json. The snapshot is (c) Commonwealth of Australia
+# under CC BY 4.0; this file is ours, Apache-2.0, and nothing in it is ISM text. Keeping
+# them apart means neither licence has to be argued about when either file is reused.
+#
+# WHY TAG SECTIONS RATHER THAN CONTROLS
+#
+# Measured against the snapshot: 1101 controls, 22 guidelines, 70 guideline+section pairs,
+# 450 guideline+section+topic triples. Twenty-two is too coarse to be useful and 450 is
+# past what anyone will actually read, so the judgement is made once per section and every
+# control in it inherits. Seventy claims can be checked by a person in one sitting; 1101
+# cannot, and 1101 fluent-looking assignments nobody checked is the exact failure mode
+# AGENTS.md's verification-discipline section describes.
+#
+# `overrides` exists for controls the section gets wrong, and starts nearly empty on
+# purpose. A long override list written on day one would reintroduce the unreviewable
+# problem through the back door. Add one when a specific control is misplaced, with a
+# reason.
+#
+# WHAT IS NOT A TAG
+#
+# `essential_eight` and `applicable` stay in the snapshot as carried ISM facts and are not
+# tagging axes. They answer "which ASD programme is this part of" and "at what
+# classification", not "does this concern the code I am writing". Mixing the two produces
+# a vocabulary that answers neither question well.
+#
+# TAGGING IS CLASSIFICATION, NOT ADJUDICATION
+#
+# The core invariant forbids a model deciding whether a control passes. Deciding that
+# ISM-1876 is about patching is not that — it is setup work, which the invariant permits.
+# The safeguard is that every assignment here is reviewable, not that no agent wrote it.
+
+version: 1
+
+# The primary axis: can this be evidenced from a repository at all?
+#
+#   code            visible in source, dependencies or tests
+#   infrastructure  visible in deployed or declared infrastructure
+#   organisational  people, policy, physical premises, process. Never evidenced from a repo
+#
+# A section may carry more than one. A section carrying only `organisational` is out of
+# scope for automation by definition, and a report must say so rather than showing it as
+# unimplemented.
+#
+# A surface says where a control's evidence lives. It does NOT say runwAI can reach it.
+# ISM-0260 — "all web access is conducted through web proxies" — carries `infrastructure`
+# and no repository declares it. Counting surfaces as automatable coverage would be exactly
+# the claim README.md's "Honesty about scope" section refuses to make.
+surfaces: [code, infrastructure, organisational]
+
+# The semantic vocabulary. Closed set: a tag not listed here fails the self-check, so the
+# vocabulary grows by deliberate edit rather than by drift.
+vocabulary:
+  access-control: Who may reach a system or its data, and on what terms
+  administration: Privileged administration of systems
+  ai: Artificial intelligence and machine learning systems
+  application-security: Building software securely; the development lifecycle itself
+  assurance: Assessment, testing and verification of security claims
+  authentication: Proving identity — credentials, multi-factor, sessions
+  backup: Backup, restoration and the integrity of both
+  cabling: Physical cable plant and its installation
+  cloud: Managed, outsourced and cloud-hosted services
+  content-filtering: Inspecting and filtering content in transit
+  continuity: Availability, resilience and denial-of-service resistance
+  cryptography: Algorithms, keys, and their correct use
+  data-transfer: Moving data between systems or security domains
+  database: Database servers and the data in them
+  disposal: End-of-life destruction and disposal
+  documentation: Written policy, plans and system documentation
+  email: Email systems and their use
+  emanation: Unintended electromagnetic emission
+  gateway: Boundary devices between networks or domains
+  governance: Roles, accountability and organisational oversight
+  hardening: Reducing the attack surface of a deployed system
+  incident-response: Detecting, managing and responding to incidents
+  logging: Generating and retaining event records
+  maintenance: Keeping systems serviceable and supported
+  media: Removable and fixed storage media
+  mobile: Mobile devices and their management
+  monitoring: Watching systems for signs of compromise
+  network: Network design, configuration and segmentation
+  patching: Applying security updates within a timeframe
+  peripherals: Peripheral devices and switches
+  personnel: People, clearances and their access
+  physical: Physical security of premises and equipment
+  procurement: Buying, evaluating and outsourcing
+  remote-access: Administrative and user access from elsewhere
+  sanitisation: Erasing data so it cannot be recovered
+  segmentation: Separating networks and systems by criticality
+  supply-chain: Third-party components and their provenance
+  telephony: Voice, fax and video communications
+  training: Awareness and skills development
+  transport: Protecting data in transit
+  virtualisation: Hypervisors and containers
+  web: Web applications, servers and browsing
+  wireless: Wireless networks and their configuration
+
+# One entry per guideline+section pair. All 70 are present; the self-check fails if the
+# snapshot contains a pair this file does not cover, so a new ISM release cannot quietly
+# add an untagged section.
+sections:
+  Guidelines for communications infrastructure:
+    Cabling infrastructure: {surfaces: [organisational], tags: [physical, cabling, network]}
+    Emanation security: {surfaces: [organisational], tags: [physical, emanation]}
+
+  Guidelines for communications systems:
+    Fax machines and services: {surfaces: [organisational], tags: [telephony]}
+    Multifunction devices: {surfaces: [organisational], tags: [peripherals, hardening]}
+    Telephone systems: {surfaces: [organisational], tags: [telephony]}
+    Video conferencing and Internet Protocol telephony:
+      {surfaces: [infrastructure, organisational], tags: [telephony, network]}
+
+  Guidelines for cryptography:
+    Cryptographic algorithms: {surfaces: [code, infrastructure], tags: [cryptography]}
+    Cryptographic fundamentals:
+      {surfaces: [code, infrastructure, organisational], tags: [cryptography]}
+    Cryptographic protocols: {surfaces: [code, infrastructure], tags: [cryptography, transport]}
+    Internet Protocol Security: {surfaces: [infrastructure], tags: [cryptography, network]}
+    Secure Shell: {surfaces: [infrastructure], tags: [cryptography, remote-access]}
+    Secure/Multipurpose Internet Mail Extension:
+      {surfaces: [infrastructure], tags: [cryptography, email]}
+    Transport Layer Security: {surfaces: [code, infrastructure], tags: [cryptography, transport]}
+
+  Guidelines for cyber security documentation:
+    Development and maintenance of cyber security documentation:
+      {surfaces: [organisational], tags: [governance, documentation]}
+    System-specific cyber security documentation:
+      {surfaces: [organisational], tags: [governance, documentation]}
+
+  Guidelines for cyber security incidents:
+    Managing cyber security incidents: {surfaces: [organisational], tags: [incident-response]}
+    Responding to cyber security incidents:
+      {surfaces: [organisational], tags: [incident-response]}
+
+  Guidelines for cyber security roles:
+    Board of directors and executive committee: {surfaces: [organisational], tags: [governance]}
+    Chief information security officer: {surfaces: [organisational], tags: [governance]}
+    System owners: {surfaces: [organisational], tags: [governance]}
+
+  Guidelines for data transfers:
+    Data transfers:
+      {surfaces: [infrastructure, organisational], tags: [data-transfer, content-filtering]}
+
+  Guidelines for database systems:
+    Database servers: {surfaces: [infrastructure], tags: [database, hardening]}
+    Databases: {surfaces: [code, infrastructure], tags: [database, access-control]}
+
+  Guidelines for email:
+    Email gateways and servers: {surfaces: [infrastructure], tags: [email, gateway]}
+    Email usage: {surfaces: [organisational], tags: [email]}
+
+  Guidelines for enterprise mobility:
+    Enterprise mobility: {surfaces: [organisational], tags: [mobile]}
+    Mobile device management:
+      {surfaces: [infrastructure, organisational], tags: [mobile, hardening]}
+    Mobile device usage: {surfaces: [organisational], tags: [mobile]}
+
+  Guidelines for evaluated products:
+    Evaluated product procurement: {surfaces: [organisational], tags: [procurement]}
+    Evaluated product usage: {surfaces: [organisational], tags: [procurement]}
+
+  Guidelines for gateways:
+    Content filtering: {surfaces: [infrastructure], tags: [gateway, content-filtering]}
+    Cross Domain Solutions: {surfaces: [infrastructure], tags: [gateway, data-transfer]}
+    Diodes: {surfaces: [infrastructure], tags: [gateway, data-transfer]}
+    Firewalls: {surfaces: [infrastructure], tags: [gateway, network]}
+    Gateways: {surfaces: [infrastructure], tags: [gateway, network]}
+    Peripheral switches: {surfaces: [organisational], tags: [peripherals]}
+    Web application firewalls: {surfaces: [infrastructure], tags: [gateway, web]}
+    Web content filters:
+      {surfaces: [infrastructure], tags: [gateway, content-filtering, web]}
+    Web proxies: {surfaces: [infrastructure], tags: [gateway, web]}
+
+  Guidelines for information technology equipment:
+    IT equipment disposal: {surfaces: [organisational], tags: [disposal, physical]}
+    IT equipment maintenance or repairs: {surfaces: [organisational], tags: [physical, maintenance]}
+    IT equipment sanitisation and destruction:
+      {surfaces: [organisational], tags: [sanitisation, disposal]}
+    IT equipment usage: {surfaces: [organisational], tags: [physical]}
+
+  Guidelines for media:
+    Media destruction: {surfaces: [organisational], tags: [media, disposal]}
+    Media disposal: {surfaces: [organisational], tags: [media, disposal]}
+    Media sanitisation: {surfaces: [organisational], tags: [media, sanitisation]}
+    Media usage: {surfaces: [organisational], tags: [media]}
+
+  Guidelines for networking:
+    Network design and configuration:
+      {surfaces: [infrastructure], tags: [network, segmentation]}
+    Service continuity for online services:
+      {surfaces: [infrastructure], tags: [continuity, network]}
+    Wireless networks: {surfaces: [infrastructure], tags: [network, wireless]}
+
+  Guidelines for personnel security:
+    Access to systems and their resources:
+      {surfaces: [infrastructure, organisational], tags: [access-control, personnel]}
+    Cyber security awareness training: {surfaces: [organisational], tags: [personnel, training]}
+
+  Guidelines for physical security:
+    Facilities and systems: {surfaces: [organisational], tags: [physical]}
+    IT equipment and media: {surfaces: [organisational], tags: [physical, media]}
+
+  Guidelines for procurement and outsourcing:
+    Cyber supply chain risk management:
+      {surfaces: [organisational], tags: [supply-chain, procurement]}
+    Managed services and cloud services:
+      {surfaces: [infrastructure, organisational], tags: [procurement, cloud]}
+
+  Guidelines for security assurance:
+    Security assessments: {surfaces: [organisational], tags: [assurance]}
+    Security monitoring:
+      {surfaces: [infrastructure, organisational], tags: [logging, monitoring]}
+
+  Guidelines for software development:
+    Artificial intelligence application development:
+      {surfaces: [code], tags: [ai, application-security]}
+    Mobile application development: {surfaces: [code], tags: [mobile, application-security]}
+    Software development fundamentals:
+      {surfaces: [code, organisational], tags: [application-security, supply-chain]}
+    Web application development: {surfaces: [code], tags: [web, application-security]}
+
+  Guidelines for system hardening:
+    Authentication hardening:
+      {surfaces: [code, infrastructure, organisational], tags: [authentication, access-control]}
+    Operating system hardening: {surfaces: [infrastructure], tags: [hardening, patching]}
+    Server application hardening: {surfaces: [infrastructure], tags: [hardening]}
+    User application hardening: {surfaces: [infrastructure], tags: [hardening]}
+    Virtualisation hardening: {surfaces: [infrastructure], tags: [hardening, virtualisation]}
+
+  Guidelines for system management:
+    Data backup and restoration:
+      {surfaces: [infrastructure, organisational], tags: [backup, continuity]}
+    System administration:
+      {surfaces: [infrastructure, organisational], tags: [administration, access-control]}
+    System maintenance:
+      {surfaces: [infrastructure, organisational], tags: [patching, maintenance]}
+
+# Controls whose section gets them wrong. Each needs a reason: an override with no argument
+# is indistinguishable from a mistake, and this is the file where a wrong entry is least
+# visible.
+#
+# Deliberately short. Every entry here is a claim about one specific control, checked
+# against its text in the snapshot — which is why they are added as they are found rather
+# than generated in a batch.
+overrides:
+  ISM-1876:
+    surfaces: [code, infrastructure]
+    tags: [patching, supply-chain]
+    reason: >-
+      Section is System maintenance, which inherits organisational. This control is a
+      48-hour patching timeframe for internet-facing services and is evidenced from a
+      dependency manifest and a deployment record, not from policy.
+  ISM-1690:
+    surfaces: [code, infrastructure]
+    tags: [patching, supply-chain]
+    reason: >-
+      Same as ISM-1876 at the two-week timeframe. Both are named in a note on RWA-0051 and
+      are the clearest case in the ISM of a maintenance control that is actually a code and
+      deployment fact.
+  ISM-2032:
+    surfaces: [code]
+    tags: [application-security, assurance]
+    reason: >-
+      Section is Software development fundamentals, which carries organisational as well
+      because it spans developer training and lifecycle policy. This control is about
+      automated testing completing without warnings or errors, which is purely a CI fact.

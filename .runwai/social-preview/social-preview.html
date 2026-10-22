@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>runwAI — social preview</title>
+<style>
+  /* Brand fonts, as loaded by the DeepCivic design system. */
+  @font-face {
+    font-family: 'Barlow Condensed';
+    font-style: normal;
+    font-weight: 900;
+    src: url('fonts/barlow-condensed-latin-900-normal.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Inclusive Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/inclusive-sans-latin-400-normal.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Inclusive Sans';
+    font-style: normal;
+    font-weight: 600;
+    src: url('fonts/inclusive-sans-latin-600-normal.woff2') format('woff2');
+  }
+
+  /* DeepCivic design tokens (light `:root` set) — lime page, navy ink,
+     purple + coral accents, dark cards. Copied from the design system. */
+  :root {
+    --background: #c8ef35;
+    --foreground: #18182a;
+    --card: #1a1a24;
+    --card-foreground: #f0f0e8;
+    --primary: #18182a;
+    --primary-foreground: #f0f0e8;
+    --accent: #7b6ff0;
+    --accent-secondary: #e05548;
+    --border: #18182a;
+
+    --on-card-muted: color-mix(in srgb, var(--card-foreground) 62%, transparent);
+    --on-card-faint: color-mix(in srgb, var(--card-foreground) 42%, transparent);
+    --on-card-line: color-mix(in srgb, var(--card-foreground) 16%, transparent);
+
+    --font-sans: 'Inclusive Sans', system-ui, sans-serif;
+    --font-display: 'Barlow Condensed', impact, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    width: 1280px;
+    height: 640px;
+    overflow: hidden;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The 40pt safe area GitHub recommends: nothing that matters crosses it. */
+  .safe {
+    position: absolute;
+    inset: 80px;
+    display: grid;
+    grid-template-columns: 1fr 466px;
+    gap: 46px;
+    align-items: stretch;
+  }
+
+  /* ---- Left: wordmark and promise ---- */
+
+  .lede {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--foreground) 62%, transparent);
+  }
+  /* Coral pip — the accent-secondary, used sparingly as punctuation. */
+  .pip {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--accent-secondary);
+  }
+
+  .wordmark {
+    /* Kept in the name's own casing — the capitalised AI is the point —
+       but in the display face and purple offset the brand uses. */
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 152px;
+    line-height: 0.88;
+    /* Slightly opened up: at this size the condensed 900 lowercase turns into a
+       wall of verticals otherwise. */
+    letter-spacing: 0.025em;
+    color: var(--foreground);
+    text-shadow: 6px 6px 0 var(--accent);
+    margin: 24px 0 0;
+  }
+
+  .tagline {
+    margin: 28px 0 0;
+    font-size: 27px;
+    line-height: 1.36;
+    color: color-mix(in srgb, var(--foreground) 84%, transparent);
+  }
+  .tagline strong { font-weight: 600; }
+
+  .chips {
+    display: flex;
+    gap: 10px;
+    margin: 30px 0 0;
+  }
+  .chip {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 9px 16px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--foreground);
+  }
+  /* One filled chip, the way the brand marks the active thing. */
+  .chip.solid {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--primary);
+  }
+
+  /* ---- Right: the artefact, as a dark bento card ---- */
+
+  .card {
+    background: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 34px 34px 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--on-card-line);
+  }
+  .card-title { font-size: 19px; font-weight: 600; }
+  .card-tag {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--on-card-faint);
+  }
+
+  /* The rows carry the card's height rather than bunching at the top. */
+  .rows {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    margin: 4px 0;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 14px 0 13px;
+    border-bottom: 1px solid var(--on-card-line);
+    font-size: 19px;
+  }
+  .row:last-child { border-bottom: 0; }
+  .dot {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 999px;
+  }
+  /* Four states, four colours from the token set — never a gradient of one. */
+  .dot.checked  { background: #c8ef35; }
+  .dot.mapped   { background: var(--accent); }
+  .dot.unseen   { background: var(--accent-secondary); }
+  .dot.outside  { background: transparent; box-shadow: inset 0 0 0 2px var(--on-card-faint); }
+
+  .row.dim { color: var(--on-card-muted); }
+
+  .card-foot {
+    margin: 20px 0 0;
+    padding-top: 17px;
+    border-top: 1px solid var(--on-card-line);
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--on-card-muted);
+  }
+  .card-foot b { color: var(--card-foreground); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="safe">
+    <div class="lede">
+      <div class="eyebrow">
+        <span>DeepCivic</span>
+        <span class="pip"></span>
+        <span>Template repository</span>
+      </div>
+
+      <div class="wordmark">runwAI</div>
+
+      <!-- Breaks are explicit: the canvas is a fixed size, so the rag is
+           composed rather than left to the wrapper. -->
+      <p class="tagline">
+        Build software with an AI&nbsp;agent —<br />
+        and <strong>see what actually checks your&nbsp;code.</strong>
+      </p>
+
+      <div class="chips">
+        <span class="chip solid">AGENTS.md</span>
+        <span class="chip">pinned checks</span>
+        <span class="chip">plain-language report</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">security-report.md</span>
+        <span class="card-tag">generated</span>
+      </div>
+      <div class="rows">
+        <div class="row"><span class="dot checked"></span>Has a check behind it</div>
+        <div class="row dim"><span class="dot mapped"></span>Mapped, nothing runs</div>
+        <div class="row dim"><span class="dot unseen"></span>Unassessed</div>
+        <div class="row dim"><span class="dot outside"></span>Out of scope</div>
+      </div>
+      <p class="card-foot">
+        <b>A green report is not compliance.</b>
+        It says what ran, what it found, and what nobody looked at.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

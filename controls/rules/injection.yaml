@@ -1,0 +1,154 @@
+# runwAI injection baseline (RWA-0003, RWA-0020, RWA-0021)
+#
+# Deliberately narrow. These rules target the sink, not the taint path, so they
+# are fast and produce stable verdicts. Broad taint analysis belongs in a separate
+# ruleset where the false-positive budget is understood.
+#
+# KNOWN FALSE-POSITIVE CLASSES
+#
+# Documented here because a rule whose noise is undocumented gets suppressed wholesale
+# within a month, and a suppressed rule is a control that reports green while enforcing
+# nothing.
+#
+#   Interpolated identifier that is a module constant
+#     The sink match ignores provenance. Suppress with a reason.
+#   ORM .raw() with a parameterised second argument
+#     The template literal still interpolates. Suppress, or move to a bound query.
+#   innerHTML assigned from a sanitiser's output
+#     The rule cannot see that DOMPurify ran. Suppress with the sanitiser named.
+#   A local function named exec or execSync that is not child_process
+#     The JS shell rule matches the bare names because that is how child_process is
+#     usually destructured. Suppress with a reason naming what the function is.
+#
+# Suppress individually and give a reason, never blanket:
+#
+#   # nosemgrep: runwai-python-sql-string-building -- table name is a module constant
+#   cur.execute(f"SELECT count(*) FROM {TABLE}")
+#
+# Requiring a reason after `--` keeps suppressions auditable. A bare `# nosemgrep` with
+# no justification should fail review.
+#
+# STEAL: Sink-focused semgrep rules for SQL, shell and HTML injection. Asserted in both
+# directions in controls/tests/. Depends on semgrep only.
+rules:
+  - id: runwai-python-sql-string-building
+    languages: [python]
+    severity: ERROR
+    message: >-
+      SQL built by string interpolation reaches execute(). Use a parameterised
+      query: cursor.execute("SELECT ... WHERE id = %s", (value,)). [RWA-0021 / ISM-1276]
+    metadata:
+      runwai-control: RWA-0021
+      category: security
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: $CUR.execute("..." % ...)
+          - pattern: $CUR.execute("..." + $X)
+          - pattern: $CUR.execute("...".format(...))
+          - pattern: $CUR.execute(f"...")
+          - pattern: $CUR.executemany("..." % ...)
+          - pattern: $CUR.executemany(f"...")
+
+  - id: runwai-python-sql-string-building-indirect
+    languages: [python]
+    severity: ERROR
+    message: >-
+      SQL string is assembled by interpolation before execution. Parameterise the
+      query instead of building it. [RWA-0021 / ISM-1276]
+    metadata:
+      runwai-control: RWA-0021
+      category: security
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $Q = f"...{$X}..."
+              ...
+              $CUR.execute($Q, ...)
+          - pattern: |
+              $Q = f"...{$X}..."
+              ...
+              $CUR.execute($Q)
+
+  - id: runwai-js-sql-template-literal
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      SQL built from a template literal reaches query(). Use placeholders and pass
+      values as the second argument. [RWA-0021 / ISM-1276]
+    metadata:
+      runwai-control: RWA-0021
+      category: security
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: $DB.query(`...${$X}...`)
+          - pattern: $DB.query("..." + $X)
+          - pattern: $DB.raw(`...${$X}...`)
+
+  - id: runwai-js-dangerous-html-sink
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Untrusted value reaches an HTML sink without escaping. Render as text, or
+      sanitise explicitly before assignment. [RWA-0020 / ISM-1240, ISM-1241]
+    metadata:
+      runwai-control: RWA-0020
+      category: security
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: $EL.innerHTML = $X
+          - pattern: $EL.outerHTML = $X
+          - pattern: $EL.insertAdjacentHTML($POS, $X)
+          - pattern: document.write($X)
+      - pattern-not: $EL.innerHTML = "..."
+      - pattern-not: $EL.insertAdjacentHTML($POS, "...")
+      - pattern-not: document.write("...")
+
+  - id: runwai-js-shell-injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Shell command built by interpolation reaches child_process. Use execFile with
+      an argument array, or keep the command static. [RWA-0020 / ISM-1240]
+    metadata:
+      runwai-control: RWA-0020
+      category: security
+      confidence: HIGH
+    # The bare names are matched because destructuring is the dominant idiom
+    # (`const { exec } = require("child_process")`), and the receiver is anchored to
+    # `child_process` rather than a metavariable so RegExp.prototype.exec never
+    # matches. Known-uncovered, recorded rather than guessed at: spawn with
+    # `shell: true`, and a command assembled indirectly before the call — the mirror
+    # of runwai-python-sql-string-building-indirect does not exist for shell yet.
+    patterns:
+      - pattern-either:
+          - pattern: exec(`...${$X}...`, ...)
+          - pattern: exec("..." + $X, ...)
+          - pattern: execSync(`...${$X}...`, ...)
+          - pattern: execSync("..." + $X, ...)
+          - pattern: child_process.exec(`...${$X}...`, ...)
+          - pattern: child_process.exec("..." + $X, ...)
+          - pattern: child_process.execSync(`...${$X}...`, ...)
+          - pattern: child_process.execSync("..." + $X, ...)
+
+  - id: runwai-python-shell-injection
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Shell command built by interpolation with shell=True. Pass an argument list
+      and leave shell disabled. [RWA-0020 / ISM-1240]
+    metadata:
+      runwai-control: RWA-0020
+      category: security
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$F(f"...", ..., shell=True, ...)
+          - pattern: subprocess.$F("..." % ..., ..., shell=True, ...)
+          - pattern: subprocess.$F("..." + $X, ..., shell=True, ...)
+          - pattern: os.system(f"...")
+          - pattern: os.system("..." % ...)
+          - pattern: os.system("..." + $X)

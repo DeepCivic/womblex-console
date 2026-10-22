@@ -1,0 +1,95 @@
+# runwAI unsafe deserialisation (RWA-0022, RWA-0074)
+#
+# Deserialising untrusted data in a format that can carry executable state is
+# remote code execution, not a parsing bug. These rules flag the formats where
+# that is true by design rather than by accident.
+#
+# KNOWN FALSE-POSITIVE CLASSES
+#
+# Documented here because a rule whose noise is undocumented gets suppressed wholesale
+# within a month, and a suppressed rule is a control that reports green while enforcing
+# nothing.
+#
+#   pickle used for a local cache the application itself wrote
+#     The sink match ignores provenance. Suppress with a reason.
+#   joblib.load of a checkpoint produced in the same pipeline
+#     Same. Suppress, or move to safetensors.
+#   eval on a literal
+#     Excluded by pattern-not. Should not fire; report it if it does.
+#
+# Suppress individually with a reason after `--`, never blanket. A bare `# nosemgrep`
+# with no justification should fail review.
+#
+# STEAL: Semgrep rules for unsafe deserialisation and pickle-backed model loading.
+# Asserted in both directions in controls/tests/. Depends on semgrep only.
+rules:
+  - id: runwai-python-unsafe-pickle
+    languages: [python]
+    severity: ERROR
+    message: >-
+      pickle and marshal execute arbitrary code during deserialisation. Validate the
+      source, or use a data-only format such as JSON. [RWA-0022 / ISM-2058]
+    metadata:
+      runwai-control: RWA-0022
+      category: security
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: pickle.load(...)
+          - pattern: pickle.loads(...)
+          - pattern: cPickle.load(...)
+          - pattern: cPickle.loads(...)
+          - pattern: marshal.load(...)
+          - pattern: marshal.loads(...)
+          - pattern: shelve.open(...)
+
+  - id: runwai-python-unsafe-yaml
+    languages: [python]
+    severity: ERROR
+    message: >-
+      yaml.load without SafeLoader can instantiate arbitrary Python objects. Use
+      yaml.safe_load. [RWA-0022 / ISM-2058]
+    metadata:
+      runwai-control: RWA-0022
+      category: security
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: yaml.load($D)
+          - pattern: yaml.load($D, Loader=yaml.Loader)
+          - pattern: yaml.load($D, Loader=yaml.UnsafeLoader)
+          - pattern: yaml.load($D, Loader=yaml.FullLoader)
+          - pattern: yaml.unsafe_load(...)
+
+  - id: runwai-python-model-pickle-load
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Loading a model from a pickle-backed format executes code at load time. Store
+      models in a non-executable format such as safetensors. [RWA-0074 / ISM-2072]
+    metadata:
+      runwai-control: RWA-0074
+      category: security
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: torch.load($P)
+          - pattern: torch.load($P, weights_only=False, ...)
+          - pattern: joblib.load(...)
+      - pattern-not: torch.load($P, weights_only=True, ...)
+
+  - id: runwai-js-unsafe-eval-deserialisation
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Deserialising via eval or the Function constructor executes the payload. Use
+      JSON.parse. [RWA-0022 / ISM-2058]
+    metadata:
+      runwai-control: RWA-0022
+      category: security
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: eval($X)
+          - pattern: new Function($X)
+      - pattern-not: eval("...")

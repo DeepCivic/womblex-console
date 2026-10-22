@@ -1,0 +1,169 @@
+# runwAI development backlog.
+#
+# runwAI's own outstanding work. Not the adopting project's backlog, and not a security
+# backlog generated from scanner findings.
+#
+# Policy: only outstanding items live here. An item that is completed or rejected is
+# deleted in the commit that closes it — its record is that commit's message, which
+# cites the item's id, and .runwai/decisions.yaml where closing it changed the
+# template's shape. IDs are stable and never reused: the next item is id_10, whatever
+# became of id_1 through id_9.
+#
+# When nothing is outstanding, only this header and the template below remain.
+#
+# Template for a new item:
+#
+# id_10:
+#   title: One line, imperative
+#   description: |
+#     What it is, and the problem it solves.
+#   priority: critical | high | medium | low
+#   status: proposed
+#   value: |
+#     Why it is worth doing, argued in the template's own terms (MAINTAINERS.md).
+#   acceptance_criteria:
+#     - "Checkable statements, honest about what cannot be enforced"
+
+id_10:
+  title: Split .runwai/ into the record that is deleted and the tools that are kept
+  description: |
+    Decision 3 moved four Python self-checks into `.runwai/tools/` and concluded that
+    deleting the directory "removes runwAI's own self-checks, which is correct, because they
+    validate the template's structure and not the adopter's code."
+
+    That premise is false for three of the four, measured by what each one actually reads:
+
+      * validate_registry.py reads only controls/registry.yaml — which the adopter keeps,
+        and which docs/security-report.md is generated from
+      * ism.py reads only controls/, and the posture workflow regenerates the index from it
+        before building the report
+      * validate_helpers.py reads AGENTS.md, agents/, llms.txt, the root configs and
+        .steal/ — all adopter-facing — plus two couplings into .runwai/
+      * report.py reads only .runwai/, and is the one that genuinely belongs to the record
+
+    Three contradictions in AGENTS.md's first session descend from that, and an external
+    reviewer hit all three in one session:
+
+      1. AGENTS.md calls the determinism invariant a rule "you cannot talk your way past"
+         because validate_registry.py enforces it mechanically. Step 4 deletes it. Step 7
+         then requires the invariant to survive into the rewritten guide, so the adopter is
+         left with a central rule stated as unbypassable and enforced by nothing — and five
+         rule files under agents/rules/ that name it as their "Enforced by:".
+      2. Step 5 offers to keep the reuse layer, whose only enforcement is validate_helpers.py
+         — deleted in step 4. Its check_entry_points() also hard-requires
+         .runwai/docs/provenance.md, so keeping any hook the prune list missed fails
+         instantly.
+      3. The deletion breaks about twenty Markdown links from files the adopter keeps, and
+         the tool that finds them is the tool the deletion removes. AGENTS.md now tells the
+         agent to sweep with `rg` for exactly this reason, which is a workaround for a
+         layout problem rather than a fix.
+
+    Proposed: move validate_registry.py, ism.py and validate_helpers.py to
+    .github/scripts/, already documented as "adopter-facing, so NOT in .runwai/". report.py
+    stays and dies with the directory. Make validate_helpers' two .runwai/ couplings
+    conditional in the shape decision 17 established for the reuse layer — present is
+    checked, absent is a completed deletion, half-gone is the error.
+  priority: high
+  status: proposed
+  value: |
+    The invariant stays enforced in the adopter's repository, which is the only place its
+    enforcement was ever worth anything — this template's whole claim is that a control is
+    adjudicated by a deterministic check rather than by a model, and today that claim
+    expires the moment someone accepts the offer in step 4.
+
+    It also makes step 4 small enough to follow correctly. The current prune list is five
+    items across three files with a manual link sweep at the end; after the split it is one
+    hook, one CI step and a regenerated SBOM.
+
+    Decision 3's actual concern was that a root-level tools/ directory of .py files makes a
+    template read as a Python project. .github/scripts/ is not the root, so the split keeps
+    what decision 3 was protecting and drops only its maintainer_python_lives_in_runwai
+    clause. That clause needs a decision record amending 3, not a silent edit.
+  acceptance_criteria:
+    - "A decision record amends decision 3, stating which tools moved and why the
+       adopter-facing/maintainer-facing line is drawn at what each tool reads"
+    - "validate_registry.py, ism.py and validate_helpers.py run from .github/scripts/, and
+       every invocation moves with them: .pre-commit-config.yaml, posture.yml, the Makefile,
+       agents/running-the-checks.md, the six files under agents/rules/ that cite them as
+       'Enforced by:' (five rules plus _template.md), MAINTAINERS.md and .claude/commands/"
+    - "Deleting .runwai/ leaves a tree where `make check` passes with no edits to any tool —
+       validate_helpers reports the absent decisions log and provenance page as a completed
+       deletion rather than an error"
+    - "AGENTS.md step 4's prune list and the manual `rg` link sweep are both reduced to what
+       the new layout actually requires, and README.md's checklist moves with it"
+    - "make verify passes before and after, with identical rule verdicts: the split moves
+       files and must not change what any rule catches"
+  not_enforceable: |
+    Nothing mechanically checks that a tool sits with the tree it validates. The split is a
+    judgement about what each file reads, which is why the criterion above is "deleting
+    .runwai/ leaves a passing tree" — an outcome that can be tested — rather than a rule
+    about where files live.
+
+id_5:
+  title: Rebalance the commit-time gate against where each check can honestly run
+  description: |
+    `.pre-commit-config.yaml` runs seven blocking hooks: the secret scan, SAST over staged
+    files, and five structural self-checks — the registry validator, ISM claim verification,
+    the ISM index staleness check, the helper-layer check and the report freshness check.
+    That makes saving work the heaviest gate in the repository, when the stated design is
+    fast checks on save and the full set where it reports.
+
+    Commit time is for what must never enter history, which is a leaked credential. The
+    structural checks are about runwAI's own coherence: they need the whole tree, they are
+    not about the change being saved, and `.github/workflows/posture.yml` already re-runs
+    every one of them.
+
+  priority: medium
+  status: proposed
+  value: |
+    A gate in the wrong place is not a weakened gate, and this one has not been weakened —
+    nothing was moved after it failed. But it is still the gate the maintainer meets most
+    often, and the cost of getting the placement wrong is paid on every commit. The rule in
+    AGENTS.md is to put a check where it can actually see the problem; the repository does
+    not currently follow its own rule about itself.
+
+    Moving a check after it fails is weakening it, so this has to be decided as design and
+    recorded as a decision, not done the next time a hook is inconvenient.
+  acceptance_criteria:
+    - "A decision record states which checks run at commit time and why, in terms of what
+       each one can see there"
+    - "The secret scan stays on the commit hook: a credential that reaches a push is
+       already public and must be rotated rather than deleted"
+    - "Every check moved off the commit hook is verified as already running in
+       .github/workflows/posture.yml, named job by named job, before it is removed"
+    - "Hook counts in .runwai/docs/status.md and AGENTS.md's deletion instructions are corrected
+       in the same commit"
+  not_enforceable: |
+    Nothing mechanically checks that a check sits where it can see its subject matter. This
+    stays a review judgement, which is why it is written down rather than automated.
+
+id_9:
+  title: Inter-service API contract checking
+  description: |
+    Add a deterministic contract check that validates API compatibility between components
+    that are versioned separately.
+    - Parse OpenAPI/AsyncAPI specs or protobuf definitions from each component
+    - Run the consumer's committed example requests and responses against the producer's
+      schema
+    - Flag mismatches: missing fields, type changes, status code changes
+    - Store contract fixtures alongside the code they describe, so a breaking change and its
+      fixture update land in the same commit
+    - Report in CI as an annotation, never as a commit-time gate
+
+    Solves: silent breakage when one component changes its API shape and the other finds out
+    in production.
+  priority: medium
+  status: proposed
+  value: |
+    Deterministic in the strict sense: given two schema versions, the diff is a mechanical
+    comparison with no judgement and no model.
+    Catches integration failures at review time rather than after deploy.
+    Keeps components decoupled — an API may change, provided the consumer's fixture changes
+    with it and someone reviews both.
+  acceptance_criteria:
+    - "`make contract-check` outputs a structured diff report"
+    - "A contract breakage annotates the run and does not block the commit hook"
+    - "A repository with one component, or no schemas, reports `not applicable` rather than
+       passing"
+    - "Any tool used (pact, openapi-diff) is pinned to an exact version, or recorded
+       `install: unavailable` with no version"

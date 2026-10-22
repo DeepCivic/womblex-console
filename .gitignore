@@ -1,0 +1,15 @@
+# The dependency audit's working directory: the pinned scanner binaries, the
+# vulnerability database snapshot, and the raw scanner output.
+#
+# It is not committed and must not be. The database alone is about a gigabyte, it is a
+# rebuildable input rather than a source file, and `make setup-audit-dbs` fetches it in
+# one step. What *is* committed is everything derived from it — docs/dependencies.md, and
+# the Dependency posture section of docs/security-report.md, which records the snapshot
+# date so a verdict can still be traced to the database that produced it.
+.audit-cache/
+
+# The pinned toolchain, installed by `make setup`. Not committed for the same reasons: it
+# is a rebuildable input rather than a source file, it holds third-party code, and one
+# command recreates it. The pins that decide its contents are in the Makefile, which is
+# committed — so the environment is disposable and the versions are not.
+.venv/

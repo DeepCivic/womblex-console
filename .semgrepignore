@@ -1,0 +1,49 @@
+# runwAI scan exclusions.
+#
+# controls/tests/ holds fixtures that contain deliberate vulnerabilities,
+# annotated with `ruleid:` and `ok:` so every rule is asserted in both directions.
+# They are exercised by `semgrep --test`, never by a normal scan — scanning them
+# would fail the gate on purpose-built bad code.
+controls/tests/
+
+# The ISM snapshot and the published text it was taken from are large data files, not
+# source. ism-source.txt is kept as the provenance artefact for the snapshot.
+controls/ism-snapshot.json
+controls/ism-source.txt
+controls/ism-index.json
+
+# Nothing else is excluded. The adopter-facing configs at the root — biome.json,
+# playwright.config.ts, promptfooconfig.yaml — are deliberately in scope. Our rulesets are
+# only worth shipping to the extent an adopter's agent runs them over an adopter's files,
+# and these are the first such files in the tree. A rule that would be noisy on generic
+# config is a rule that needs fixing, not a path that needs hiding.
+
+.git/
+
+# The dependency audit's working directory: two scanner binaries of a couple of hundred
+# megabytes each, and a vulnerability database of about a gigabyte. Gitignored, so semgrep
+# already skips it by default — named here as well because a run with --no-git-ignore
+# would otherwise try to read all of it.
+.audit-cache/
+
+# The toolchain `make setup` installs. Gitignored, so semgrep already skips it — named
+# here for the same reason .audit-cache/ is, because a run with --no-git-ignore would
+# otherwise scan several thousand files of third-party code and report on scanners rather
+# than on this repository.
+.venv/
+
+# .runwai/ holds runwAI's own development record — backlog, decisions, provenance. That
+# is documentation about building the template, not code shipped by it.
+#
+# Excluded by file type rather than as a directory, and the difference matters. `.runwai/`
+# used to be here as a whole, which was harmless while the tree held only Markdown and
+# YAML. Decision 3 then moved four Python self-checks into .runwai/tools/ and they left
+# the scanner's scope without anyone deciding they should — measured, not guessed: semgrep
+# reported two target files where it should have seen six. A re-include (`!.runwai/tools/`)
+# does not fix it, because semgrep follows gitignore semantics and a file cannot be
+# re-included once its parent directory is excluded.
+#
+# Decision 2 says our own rules apply to what we ship. That has to include the code we ship
+# them with.
+.runwai/*.md
+.runwai/*.yaml

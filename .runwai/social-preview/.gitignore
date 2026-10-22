@@ -1,0 +1,4 @@
+# Build inputs, not sources: both are restored by `npm install && npm run render`.
+# package-lock.json is committed — it pins the transitives, which is the point.
+node_modules/
+fonts/

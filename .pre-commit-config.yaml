@@ -1,0 +1,124 @@
+# runwAI shift-left checks.
+#
+# Local developer machine only, and the only place in this repository where a check stops
+# anything — `--no-verify` still walks past it. The `posture` workflow re-runs the slower
+# and whole-tree checks in CI, where they report rather than block.
+#
+# Every hook pins an exact version. An unpinned scanner is a non-deterministic
+# control: its ruleset can change under you and silently alter verdicts.
+#
+# Install:  make setup && make hook
+#
+# `make setup` installs pre-commit==4.6.1 into .venv/ rather than into the machine's
+# Python. Installing it globally fails on the Linux images most adopters run — see the
+# comment above `VENV` in the Makefile — and the failure lands on the first command of
+# the first session, where it is least interpretable.
+minimum_pre_commit_version: "4.0.0"
+
+repos:
+  - repo: local
+    hooks:
+      # --- RWA-0010 / ISM-2030: block secrets at commit time -------------------
+      - id: runwai-detect-secrets
+        name: "RWA-0010 secret scan (ISM-2030)"
+        # The baseline lives in controls/ rather than at the root: detect-secrets is told
+        # the path explicitly, so nothing reads it at the root by convention, and the
+        # root rule (decision 9) is that a slot means something reads the path there.
+        # It is this control's configuration, so it sits with the control library.
+        entry: detect-secrets-hook --baseline controls/.secrets.baseline
+        language: python
+        additional_dependencies: ["detect-secrets==1.5.0"]
+        exclude: |
+          (?x)^(
+            controls/\.secrets\.baseline|
+            controls/ism-snapshot\.json|
+            controls/ism-index\.json
+          )$
+
+      # --- RWA-0020, RWA-0021, RWA-0022, RWA-0027: SAST on changed files ------
+      # --error is what makes this a gate. Without it semgrep reports findings and
+      # exits zero, which is the most common way a scanner ends up installed but
+      # not enforcing anything.
+      - id: runwai-semgrep
+        name: "RWA-0020/0021/0022/0027 SAST (ISM-1240, ISM-1276, ISM-2058, ISM-2016)"
+        entry: >-
+          semgrep scan --error --metrics=off --quiet
+          --config controls/rules/injection.yaml
+          --config controls/rules/deserialisation.yaml
+          --config controls/rules/path-traversal.yaml
+        language: python
+        additional_dependencies: ["semgrep==1.171.0"]
+        types_or: [python, javascript, ts]
+        # The selftest fixtures contain deliberate vulnerabilities so the rules can
+        # be asserted in both directions. Scanning them would fail every commit.
+        exclude: ^controls/tests/
+
+      # --- runwAI's own invariants -------------------------------------------
+      - id: runwai-selfcheck
+        name: "runwAI registry self-check"
+        entry: python3 .runwai/tools/validate_registry.py
+        language: python
+        additional_dependencies: ["pyyaml==6.0.3", "jsonschema==4.26.0"]
+        pass_filenames: false
+        files: ^(controls/|\.runwai/tools/)
+
+      - id: runwai-ism-verify
+        name: "ISM claim and wording verification"
+        entry: python3 .runwai/tools/ism.py verify
+        language: python
+        additional_dependencies: ["pyyaml==6.0.3"]
+        pass_filenames: false
+        files: ^controls/
+
+      # The index joins the snapshot, the semantic tags and the source rationale. It is
+      # generated and committed, and deterministic for the same reason .runwai/docs/report.md is, so a
+      # staleness check is meaningful rather than perpetually dirty.
+      - id: runwai-ism-index
+        name: "ISM semantic index is current"
+        entry: python3 .runwai/tools/ism.py index --check
+        language: python
+        additional_dependencies: ["pyyaml==6.0.3"]
+        pass_filenames: false
+        files: ^controls/
+
+      # --- AI helper layer structure -------------------------------------------
+      # Stdlib only, so it needs no additional_dependencies. Catches the ways this
+      # layer rots: a link to a page that no longer exists, a rule nobody indexed,
+      # a root config whose pinned version disagrees with the docs.
+      - id: runwai-helpers
+        name: "AI helper layer self-check"
+        entry: python3 .runwai/tools/validate_helpers.py
+        language: python
+        # The staged files are passed so the STEAL marker sweep reads only what this commit
+        # touched. Every other check in here still runs against the whole tree; only the
+        # sweep narrows, because a marker cannot be in a file the commit did not change.
+        # Unscoped, the sweep reads every file in the repository on every triggering commit
+        # — cheap in this repository, the adopter's whole codebase in theirs.
+        pass_filenames: true
+        # One invocation, not one per core. Without this, pre-commit partitions the staged
+        # files across processes, and the checks that do not narrow — links, rules, configs,
+        # decisions — are repeated once per partition, printing a summary and any error four
+        # times over. Serial keeps the sweep scoped and everything else run exactly once.
+        require_serial: true
+        # README.md and the root configs are in the trigger set because the check compares
+        # them: a version bumped in one and not the other is exactly what it catches.
+        # A STEAL marker added to a file outside this set is caught by the `posture`
+        # workflow, which runs validate_helpers with no paths and so sweeps the whole tree.
+        # That placement is deliberate: the narrow sweep is what a commit pays for, and the
+        # whole-tree sweep is the one whose answer counts.
+        files: >-
+          (?x)^(
+            AGENTS\.md|llms\.txt|README\.md|agents/|docs/|\.runwai/|
+            STEAL\.md|\.steal/|
+            biome\.json|playwright\.config\.ts|promptfooconfig\.yaml
+          )
+
+      # .runwai/docs/report.md is generated and committed. It is timestamp-free by design,
+      # so a stale check is meaningful rather than perpetually dirty.
+      - id: runwai-report
+        name: "Generated report is current"
+        entry: python3 .runwai/tools/report.py --check
+        language: python
+        additional_dependencies: ["pyyaml==6.0.3", "jsonschema==4.26.0"]
+        pass_filenames: false
+        files: ^(controls/|agents/|docs/|\.runwai/)

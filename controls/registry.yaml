@@ -1,0 +1,1347 @@
+# runwAI control registry
+#
+# Maps ISM technical controls to the deterministic mechanism that enforces them.
+# Validated by .runwai/tools/validate_registry.py (structure, determinism invariant, pinning)
+#
+# A control with an `implementation` block has a mechanism in this repository: where it
+# runs, which files carry it, and where those files came from. A control without one is
+# mapped and nothing runs — which the security report states rather than hides. That block
+# replaced the capabilities/ directory, whose manifests carried the same three facts across
+# five directories.
+#
+# `mechanism` names a real place in this repository and only two exist. `pre-commit` is the
+# local hook, the only thing here that stops anything, and it is bypassable with
+# `--no-verify`. `posture` is the CI workflow, which reports and blocks nothing — so
+# validate_registry.py rejects any control routed to it that also declares `blocking: true`.
+# Nothing here can prevent a merge: that is branch protection, a forge setting a template
+# cannot ship, and naming a gate we do not install is the coverage claim this repository
+# exists to refuse.
+# and .runwai/tools/ism.py verify (every ISM ID and its wording, against the snapshot in
+# controls/ism-snapshot.json).
+#
+# Every ISM ID below was verified against the June 2026 System security plan annex
+# template published by ASD. `ism_text` holds the authoritative wording verbatim, so
+# a future ISM release that rewords a control fails CI instead of silently leaving a
+# stale mapping in place.
+#
+# `mapping_fidelity` is the honest part. The ISM is not a CI specification: most of
+# its controls are broader than any scanner can enforce. `direct` means the tool
+# enforces what the control requires; `partial` means it covers some of it;
+# `supporting` means it produces evidence but does not satisfy the control. Only
+# `direct` mappings should ever be described to an assessor as enforced.
+
+version: 1
+
+ism_release:
+  claimed: "ASD Information security manual, June 2026"
+  verification_status: verified
+  verification_source: >-
+    System security plan annex template (June 2026), 'Controls - June 2026' worksheet,
+    published by the Australian Signals Directorate. Snapshot template SHA-256
+    c7e2f6dc52ae558fd29732adc5faf36f8de404f58248513b179fdd48eecb3d34.
+  verified_on: "2026-07-25"
+  control_count: 1101
+  snapshot: controls/ism-snapshot.json
+  note: >-
+    The ISM's Guidelines for software development explicitly cover AI-assisted,
+    AI-powered and AI-driven development, stating that where references are made to
+    software developers, they apply to humans and AI. runwAI's determinism invariant
+    is the same posture: ISM-2028 requires SAST, DAST or SCA on software artefacts and
+    ISM-2032 requires automated testing to complete without warnings, alerts or errors,
+    regardless of whether a human or a model wrote the code.
+
+controls:
+  # ---------------------------------------------------------------------------
+  # Repository and build integrity
+  #
+  # The strongest-fitting section of the ISM for a CI pipeline, and the one the
+  # original draft missed entirely. These controls are about the authoritative
+  # source for software and the build solution, not about scanning application code.
+  # ---------------------------------------------------------------------------
+  - id: RWA-0001
+    ism_ids: [ISM-1816, ISM-1422]
+    title: Protect the authoritative source for software
+    description: >-
+      Branch protection on the default branch: required reviews, required status
+      checks, no force push, no deletion. This is what "unauthorised modification is
+      prevented" means for a git repository.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: branch-protection-audit
+        class: config-scan
+        install: unavailable
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1816: >-
+        Unauthorised modification of the authoritative source for software is prevented.
+      ISM-1422: >-
+        Unauthorised access to the authoritative source for software is prevented.
+    notes: >-
+      Partial, not direct: branch protection covers modification through the forge's
+      normal path. It says nothing about who holds admin rights, who can rewrite
+      history with elevated privileges, or how the forge itself is secured.
+
+  - id: RWA-0002
+    ism_ids: [ISM-2032]
+    title: Build only after tests pass cleanly
+    description: >-
+      No artefact is built while any automated check reports a warning, alert or
+      error. Warnings count, which is stricter than most pipelines are configured.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: supporting
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+      - name: detect-secrets
+        version: "1.5.0"
+        class: secret-scan
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2032: >-
+        The build solution ensures that all automated testing is completed without
+        warnings, alerts or errors before building software artefacts.
+    notes: >-
+      Downgraded from `direct` to `supporting` when the merge gate was removed. The
+      control requires a build solution that refuses to proceed while a check is
+      unhappy; nothing here refuses anything, because nothing here builds an artefact
+      and nothing here can prevent a merge. What the workflow produces is evidence that
+      the checks ran and what they said, which is the definition of `supporting`.
+
+      Worth keeping in view: this is the control most often quietly violated by scanners
+      running in report-only mode, and `posture` runs in report-only mode. Saying so is
+      the point of the downgrade.
+
+  - id: RWA-0003
+    ism_ids: [ISM-2028, ISM-0402]
+    title: SAST, DAST and SCA on software artefacts
+    description: >-
+      Static analysis, dependency analysis and dynamic analysis before artefacts enter
+      the authoritative source, and again before each release.
+    domain: appsec
+    mechanism: pre-commit
+    enforcement: deterministic
+    blocking: true
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+      - name: bandit
+        version: "1.9.4"
+        class: sast
+        install: pypi
+        verified_version: true
+      - name: cyclonedx-bom
+        version: "7.3.1"
+        class: sbom
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: pre-commit
+      files:
+        - controls/rules/injection.yaml
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-25"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2028: >-
+        All software artefacts are tested to detect known weaknesses using static
+        application security testing (SAST), dynamic application security testing
+        (DAST) or software composition analysis (SCA), depending on the software
+        artefact type, before being imported into the authoritative source for software.
+      ISM-0402: >-
+        Software is comprehensively tested for vulnerabilities using SAST, DAST and SCA
+        prior to its initial release, any subsequent release, and periodically to help
+        identify any previously unidentified vulnerabilities.
+    notes: >-
+      Partial because ISM-0402 requires all three of SAST, DAST and SCA, and the DAST
+      leg needs a deployed target. Only the SAST and SCA legs are satisfied here.
+
+  - id: RWA-0004
+    ism_ids: [ISM-2061]
+    title: Peer review of security-relevant components
+    description: Required reviewer on changes touching security-relevant paths.
+    domain: appsec
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: codeowners-audit
+        class: config-scan
+        install: unavailable
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2061: >-
+        Peer reviews are conducted on all critical and security-related software
+        components.
+    notes: >-
+      A forge can enforce that a review happened, not that it was competent. The
+      mechanism is deterministic; the control's intent is not fully mechanisable.
+
+  - id: RWA-0005
+    ism_ids: [ISM-0400]
+    title: Segregate development, testing, staging and production
+    description: >-
+      Environment separation asserted in IaC and deployment configuration, including
+      that production credentials are not reachable from non-production.
+    domain: iac-cloud
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: checkov
+        version: "3.3.8"
+        class: iac-scan
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-0400: >-
+        Development, testing, staging and production environments are segregated.
+
+  # ---------------------------------------------------------------------------
+  # Secrets and credentials
+  # ---------------------------------------------------------------------------
+  - id: RWA-0010
+    ism_ids: [ISM-2030]
+    title: Block secrets at commit time
+    description: >-
+      Scan commits for plain text and encoded secrets and keys, blocking them from
+      entering the authoritative source.
+    domain: secrets
+    mechanism: pre-commit
+    enforcement: deterministic
+    blocking: true
+    mapping_fidelity: direct
+    tools:
+      - name: detect-secrets
+        version: "1.5.0"
+        class: secret-scan
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: pre-commit
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-25"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2030: >-
+        Scanning is used during commits to identify plain text or encoded secrets and
+        keys, which are then blocked from being stored in the authoritative source for
+        software.
+    notes: >-
+      The cleanest direct mapping in the registry: the control names the mechanism
+      (scanning during commits) and the outcome (blocked), which is exactly what a
+      pre-commit hook does. Note it says blocked, not reported.
+
+      One tool, detect-secrets, at one pinned version in two places, so the verdicts cannot
+      diverge. The commit hook is the only place a secret is blocked; `--no-verify` walks
+      past it. The CI `secrets` job re-scans every tracked file rather than only what one
+      commit staged — the wider net that still catches a secret in a file that reached the
+      tree behind `--no-verify`. Neither pass walks reachable git history, because
+      detect-secrets scans working-tree files and not the commit graph: a credential
+      committed and later deleted is not caught, so that leg of the control is unmapped.
+      Stated here rather than left for an empty result to read as a clean one.
+
+  - id: RWA-0011
+    ism_ids: [ISM-2044]
+    title: No default credentials
+    description: Scan application and IaC configuration for default or placeholder credentials.
+    domain: secrets
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: checkov
+        version: "3.3.8"
+        class: config-scan
+        install: pypi
+        verified_version: true
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2044: >-
+        Software has no default credentials; however, if credentials are required, they
+        are created on first install by the installing organisation.
+
+  - id: RWA-0012
+    ism_ids: [ISM-1402]
+    title: Credentials salted, hashed and stretched
+    description: >-
+      Flag credential storage that is not using a memory-hard KDF, and flag plaintext
+      credential persistence.
+    domain: secrets
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+      - name: bandit
+        version: "1.9.4"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1402: >-
+        Credentials stored on systems are protected by a password manager; a hardware
+        security module; or by salting, hashing and stretching them before storage
+        within a database.
+    notes: >-
+      Retired in v1 (TODO-14). The ruleset that enforced this is gone, so the control is mapped with no mechanism behind it and the security report renders it as such. bandit still flags some of this incidentally; that is not the same as a control.
+
+
+            Note the control's three alternatives. A repo using a password manager or an HSM
+      satisfies it without any hashing in application code, so a finding here is a
+      prompt to check which path the system takes, not proof of non-compliance.
+
+  # ---------------------------------------------------------------------------
+  # Application security
+  # ---------------------------------------------------------------------------
+  - id: RWA-0020
+    ism_ids: [ISM-1240, ISM-1241]
+    title: Input validation and output encoding
+    description: >-
+      Block untrusted input reaching sinks without validation, and untrusted values
+      reaching HTML output without encoding.
+    domain: appsec
+    mechanism: pre-commit
+    enforcement: deterministic
+    blocking: true
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: pre-commit
+      files:
+        - controls/rules/injection.yaml
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-25"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1240: >-
+        Validation and sanitisation are performed on all input received over the
+        internet by software.
+      ISM-1241: >-
+        Output encoding is performed on all output produced by web applications.
+    notes: >-
+      "All input" and "all output" are absolutes that sink-matching cannot verify. The
+      rules catch unescaped values reaching known sinks, which is a subset.
+
+  - id: RWA-0021
+    ism_ids: [ISM-1276, ISM-1278]
+    title: Parameterised queries, minimal database error disclosure
+    description: >-
+      Flag dynamically generated queries, and flag error handling that leaks database
+      structure to callers.
+    domain: appsec
+    mechanism: pre-commit
+    enforcement: deterministic
+    blocking: true
+    mapping_fidelity: direct
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: pre-commit
+      files:
+        - controls/rules/injection.yaml
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-25"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1276: >-
+        Parameterised queries or stored procedures, instead of dynamically generated
+        queries, are used by software for database interactions.
+      ISM-1278: >-
+        Software is designed or configured to provide as little error information as
+        possible about the structure of databases.
+
+  - id: RWA-0022
+    ism_ids: [ISM-2058]
+    title: Validate before deserialising
+    description: Flag deserialisation of untrusted input without prior validation.
+    domain: appsec
+    mechanism: pre-commit
+    enforcement: deterministic
+    blocking: true
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: pre-commit
+      files:
+        - controls/rules/deserialisation.yaml
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-25"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2058: >-
+        Data sources and serialised data inputs are validated before being deserialised.
+
+  - id: RWA-0023
+    ism_ids: [ISM-2063, ISM-1424, ISM-1552]
+    title: Web session cookie flags and security response headers
+    description: >-
+      Require HttpOnly, Secure and SameSite on session cookies; require CSP, HSTS and
+      X-Frame-Options response headers; require HTTPS-only content.
+    domain: appsec
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2063: >-
+        If supported, web application session cookies set the HttpOnly flag, Secure flag
+        and the SameSite flag by default.
+      ISM-1424: >-
+        Content-Security-Policy, Hypertext Transfer Protocol Strict Transport Security
+        and X-Frame-Options are specified by web server software via security policy in
+        response headers.
+      ISM-1552: >-
+        All web application content is offered exclusively using HTTPS.
+    notes: >-
+      Retired in v1 (TODO-14). Three of its five rules targeted JavaScript and had no fixture, so they were asserted in neither direction, and runwai-insecure-http-url was a WARNING contradicting ISM-2032. Mapped, unenforced, and honestly reported as such.
+
+
+            Static analysis sees the code that sets these, not the headers a deployed server
+      actually emits. A reverse proxy can add or strip them, so the DAST leg is needed
+      before claiming ISM-1424 is met.
+
+  - id: RWA-0024
+    ism_ids: [ISM-2057]
+    title: Input validation rules tested both ways
+    description: >-
+      Require positive and negative tests for input validation rules, not just a
+      coverage percentage.
+    domain: appsec
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: coverage
+        class: coverage-gate
+        install: unavailable
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2057: >-
+        All input validation rules are documented, implemented in code, and tested using
+        both positive and negative unit tests and integration tests.
+    notes: >-
+      Coverage tooling proves lines executed, not that a negative case was asserted.
+      The runwAI rule-test harness models the intended shape: every rule asserted in
+      both directions. No language-specific linter is pinned yet.
+
+  - id: RWA-0025
+    ism_ids: [ISM-2041]
+    title: Memory-safe languages preferred
+    description: Flag unsafe memory handling where a memory-unsafe language is in use.
+    domain: appsec
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: supporting
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2041: >-
+        Memory-safe programming languages, or less preferably memory-safe programming
+        practices, are used for software development.
+    notes: >-
+      Supporting only, and non-blocking. The control is primarily about language
+      selection, which is an architectural decision no CI gate can make. Flagging
+      unsafe constructs serves the "less preferably" fallback path.
+
+  - id: RWA-0026
+    ism_ids: [ISM-2059]
+    title: Restrict and scan file uploads
+    description: >-
+      Restrict uploads to specific file types and scan for malicious content before
+      access, execution or storage.
+    domain: appsec
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2059: >-
+        File uploads or input are restricted to specific file types, with malicious
+        content scanning occurring prior to file access, file execution or file storage.
+
+  - id: RWA-0027
+    ism_ids: [ISM-1240, ISM-2016]
+    title: Path traversal and unsafe file operations
+    description: >-
+      Flag file paths assembled by interpolation, and joined paths handed to a filesystem
+      call without canonicalisation, in Python and Node.
+    domain: appsec
+    mechanism: pre-commit
+    enforcement: deterministic
+    blocking: true
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: pre-commit
+      files:
+        - controls/rules/path-traversal.yaml
+      covers: >-
+        The filesystem sink class only. Both ISM IDs are about validating input in
+        general; these four rules see one way unvalidated input causes harm, at the point
+        it reaches a file API.
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-29"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-29"
+    ism_text:
+      ISM-1240: >-
+        Validation and sanitisation are performed on all input received over the
+        internet by software.
+      ISM-2016: >-
+        Validation and sanitisation are performed on all input received over a local
+        network by software.
+    notes: >-
+      The fix, per language, because "canonicalise it" is not an instruction. Python:
+      os.path.realpath(candidate), then assert the result starts with the realpath of the
+      base directory; with pathlib, Path(candidate).resolve() then .is_relative_to(base).
+      Node: path.resolve(candidate), then assert it starts with path.resolve(base) plus
+      path.sep; fs.realpath additionally resolves symlinks and is stronger where the file
+      already exists. Resolving without then comparing to the base is not a fix — it
+      normalises the path and still opens whatever it names.
+
+
+      Partial, and the same limit as RWA-0020: "all input" is an absolute that sink
+      matching cannot verify. These rules match the shape of the defect where the path is
+      built — interpolated into a call, or joined and passed straight in — so a path
+      assembled several statements earlier, through a helper, or read from config is not
+      seen. Zip slip, symlink following and TOCTOU races are path-handling defects with a
+      different shape and none of them is covered. The rule file lists all of this, and
+      its false-positive classes, at the top.
+
+
+      ISM-2016 is claimed here rather than by RWA-0020 because it is otherwise unmapped
+      and the same rules answer it: a traversal segment is unvalidated input whether it
+      arrived over the internet or over a local network.
+
+  # ---------------------------------------------------------------------------
+  # Supply chain: SBOM, CBOM, provenance
+  #
+  # The ISM splits each of these into a consume control and a produce control.
+  # The original draft collapsed the pairs, which hid the fact that they need
+  # different pipeline stages and different tools.
+  # ---------------------------------------------------------------------------
+  - id: RWA-0030
+    ism_ids: [ISM-2029]
+    title: Restrict imports to trustworthy sources
+    description: Restrict third-party library and component imports to approved registries.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: lockfile-registry-audit
+        class: config-scan
+        install: unavailable
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2029: >-
+        The authoritative source for software restricts the use and import of
+        third-party libraries and software components to trustworthy sources.
+    notes: >-
+      The draft named Renovate and Dependabot here. Neither is a gate: they open pull
+      requests, they do not fail builds. Enforcement is lockfile and registry-config
+      inspection.
+
+  - id: RWA-0031
+    ism_ids: [ISM-2054]
+    title: Consume SBOMs of third-party components
+    description: >-
+      Use available SBOMs for imported components to confirm they carry no known
+      vulnerabilities. This is the dependency-scanning leg.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: trivy
+        version: "0.72.0"
+        class: sca
+        install: github-release
+        verified_version: true
+      - name: syft
+        version: "1.50.0"
+        class: sbom
+        install: github-release
+        verified_version: true
+    implementation:
+      gate: posture
+      files:
+        - .github/scripts/audit.py
+      covers: >-
+        The scan leg. An SBOM is generated from this project's own lockfiles and checked
+        against a vulnerability database; an SBOM published by an upstream component is
+        not consumed, which is what the control's opening clause is about.
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-29"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2054: >-
+        If a software bill of materials is available for imported third-party software
+        components, it is used during software development to ensure such software
+        components have no known vulnerabilities.
+    notes: >-
+      grype was named here with no version and nothing running. Replaced by trivy and syft,
+      both pinned to a release version whose artefact checksum is recorded in the Makefile
+      — a tag alone would let the asset behind it change. Both are Apache-2.0, read from
+      LICENSE in each upstream tree at the pinned tag.
+
+
+      Partial, and the gap is the control's first word. ISM-2054 is about an SBOM that came
+      *with* an imported component; `make audit` generates the SBOM itself with syft and
+      scans it with trivy. That answers the control's purpose — do the imported components
+      carry known vulnerabilities — without satisfying its precondition, so it stays
+      partial.
+
+
+      Determinism is bought explicitly. A CVE database that updates under you makes the
+      same lockfile pass on Monday and fail on Tuesday, so `make setup-audit-dbs`
+      downloads a snapshot and every scan runs `--skip-db-update --offline-scan` against
+      it. The snapshot's own timestamp is recorded in the report, which is what lets a
+      changed verdict be attributed to the code or to the advisories.
+
+
+      An ecosystem with no manifest in the tree reports `not applicable` by name, never as
+      a pass. This runs in CI and on demand — never on the commit hook, because a CVE
+      published overnight is not a reason a commit cannot be saved.
+
+  - id: RWA-0032
+    ism_ids: [ISM-1730]
+    title: Produce and publish an SBOM
+    description: >-
+      Generate an SBOM at release and publish it to consumers. This is the generation
+      and publication leg, distinct from RWA-0031.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: direct
+    tools:
+      - name: syft
+        version: "1.50.0"
+        class: sbom
+        install: github-release
+        verified_version: true
+      - name: cyclonedx-bom
+        version: "7.3.1"
+        class: sbom
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: posture
+      files:
+        - .github/scripts/audit.py
+        - docs/dependencies.md
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-29"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1730: >-
+        A software bill of materials is produced and made available to consumers of
+        software.
+    notes: >-
+      Direct, and worth noting that "made available to consumers" is half the control.
+      Generating an SBOM into a CI artefact that expires in 90 days does not satisfy it.
+      This is why docs/dependencies.md is committed rather than uploaded: a consumer
+      reading the repository has the bill of materials in front of them, at the commit it
+      describes, with no artefact to download and no retention window to outlive. The file
+      is timestamp-free for the same reason .runwai/docs/report.md is — a diff in it means
+      the dependency set actually changed.
+
+
+      cyclonedx-bom stays listed and stays unused. syft emits CycloneDX too; nothing here
+      currently writes that format, and the machine-readable artefact is the remaining
+      half of this leg.
+
+  - id: RWA-0033
+    ism_ids: [ISM-2082]
+    title: Consume CBOMs of third-party components
+    description: >-
+      Use available CBOMs for imported components to confirm support for standardised
+      AACA implementations.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: supporting
+    tools:
+      - name: cyclonedx-bom
+        version: "7.3.1"
+        class: cbom
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2082: >-
+        If a cryptographic bill of materials is available for imported third-party
+        software components, it is used during software development to ensure such
+        software components provide support for standardised implementations of
+        ASD-Approved Cryptographic Algorithms.
+    notes: >-
+      Non-blocking. The ISM itself notes CBOM format is not yet subject to formal
+      standardisation and tooling is emerging, so upstream CBOMs will usually be absent
+      and the control's precondition unmet.
+
+  - id: RWA-0034
+    ism_ids: [ISM-2083]
+    title: Produce and publish a CBOM
+    description: Generate a CBOM at release and publish it to consumers.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: cyclonedx-bom
+        version: "7.3.1"
+        class: cbom
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2083: >-
+        A cryptographic bill of materials is produced and made available to consumers of
+        software.
+
+  - id: RWA-0035
+    ism_ids: [ISM-2055]
+    title: Consume build provenance of third-party components
+    description: >-
+      Use available provenance for imported components to confirm they were built to an
+      appropriate standard.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: supporting
+    tools:
+      - name: cosign
+        class: signing
+        install: unavailable
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2055: >-
+        If a software build provenance is available for imported third-party software
+        components, it is used during software development to ensure such software
+        components are built to an appropriate standard.
+
+  - id: RWA-0036
+    ism_ids: [ISM-2056]
+    title: Produce and publish build provenance
+    description: >-
+      Emit signed build provenance at release and publish it to consumers, using keyless
+      signing.
+    domain: supply-chain
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: direct
+    tools:
+      - name: cosign
+        class: signing
+        install: unavailable
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2056: >-
+        A software build provenance is produced and made available to consumers of
+        software.
+
+  # ---------------------------------------------------------------------------
+  # IaC and cloud
+  # ---------------------------------------------------------------------------
+  - id: RWA-0040
+    ism_ids: [ISM-1181, ISM-1270, ISM-1272]
+    title: Network segregation and database isolation
+    description: >-
+      Block IaC that exposes databases to the internet, places them on the same segment
+      as workstations, or leaves managed database instances publicly accessible.
+    domain: iac-cloud
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: checkov
+        version: "3.3.8"
+        class: iac-scan
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1181: >-
+        Networks are segregated into multiple network zones according to the criticality
+        of servers, services and data.
+      ISM-1270: >-
+        Database servers are placed on a different network segment to user workstations.
+      ISM-1272: >-
+        If only local access to a database is required, networking functionality of
+        database management system applications is disabled or directed to listen solely
+        to the localhost interface.
+    notes: >-
+      IaC scanning sees declared infrastructure only. Resources created outside version
+      control, or drifted since apply, are invisible to it.
+
+  - id: RWA-0041
+    ism_ids: [ISM-1781, ISM-1139, ISM-1369, ISM-1453]
+    title: Transport encryption, current TLS, AES-GCM and PFS
+    description: >-
+      Require HTTPS-only listeners, the latest TLS version, AES-GCM cipher suites and
+      Perfect Forward Secrecy, in both IaC and application code.
+    domain: crypto
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: checkov
+        version: "3.3.8"
+        class: iac-scan
+        install: pypi
+        verified_version: true
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1781: >-
+        All data communicated over network infrastructure is encrypted using
+        ASD-approved cryptography.
+      ISM-1139: >-
+        Only the latest version of TLS is used for TLS connections.
+      ISM-1369: >-
+        AES-GCM is used for encryption of TLS connections.
+      ISM-1453: >-
+        Perfect Forward Secrecy (PFS) is used for TLS connections.
+    notes: >-
+      ISM-1139 says "the latest version of TLS", not a fixed number. A rule hardcoding
+      1.3 will become wrong on the next TLS release, so the ruleset bans known-old
+      versions rather than asserting a specific current one.
+
+  - id: RWA-0042
+    ism_ids: [ISM-1811]
+    title: Backup resilience and immutability
+    description: >-
+      Require versioning, object lock and denial of public access on backup storage
+      declared in IaC.
+    domain: iac-cloud
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: checkov
+        version: "3.3.8"
+        class: iac-scan
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1811: >-
+        Backups of data, applications and settings are retained in a secure and resilient
+        manner.
+
+  # ---------------------------------------------------------------------------
+  # Containers
+  #
+  # The ISM has no container-specific controls: the word "container" appears in it
+  # only in the physical-security sense of a security cabinet. Containers are
+  # covered by the virtualisation hardening section, which defines an application
+  # container as a software-based isolation mechanism consuming shared physical
+  # computing resources, and states that containers should be treated the same as
+  # any other system.
+  # ---------------------------------------------------------------------------
+  - id: RWA-0050
+    ism_ids: [ISM-1604, ISM-1605]
+    title: Harden the container image and its base OS
+    description: >-
+      Enforce non-root users, dropped capabilities, no unneeded packages, and no
+      exposed management interfaces in container images.
+    domain: container-os
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: hadolint
+        class: container-lint
+        install: unavailable
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1604: >-
+        When using a software-based isolation mechanism that consumes shared physical
+        computing resources, the configuration of the isolation mechanism is hardened by
+        removing unneeded functionality and restricting access to the administrative
+        interface used to manage the isolation mechanism.
+      ISM-1605: >-
+        When using a software-based isolation mechanism that consumes shared physical
+        computing resources, the underlying operating system is hardened.
+    notes: >-
+      Replaces the draft's mapping to ISM-1409 and ISM-1601. ISM-1601 requires
+      Microsoft's attack surface reduction rules, a Windows endpoint control with no
+      bearing on a Dockerfile, and was dropped.
+
+  - id: RWA-0051
+    ism_ids: [ISM-1606, ISM-1848]
+    title: Patch and replace container base images
+    description: >-
+      Fail on base images carrying known vulnerabilities beyond a threshold, and on base
+      images that are no longer vendor-supported.
+    domain: container-os
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: direct
+    tools:
+      - name: trivy
+        version: "0.72.0"
+        class: container-scan
+        install: github-release
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1606: >-
+        When using a software-based isolation mechanism that consumes shared physical
+        computing resources, patches, updates or vendor mitigations for vulnerabilities
+        are applied to the isolation mechanism and underlying operating system in a
+        timely manner.
+      ISM-1848: >-
+        When using a software-based isolation mechanism that consumes shared physical
+        computing resources, the isolation mechanism or underlying operating system is
+        replaced when it is no longer supported by a vendor.
+    notes: >-
+      "In a timely manner" is defined elsewhere in the ISM by service class: ISM-1876
+      requires 48 hours for critical vulnerabilities in online services, ISM-1690 two
+      weeks for non-critical. A container serving internet traffic falls under those
+      timeframes, so the scanner threshold should be set from them rather than picked.
+
+
+      trivy now carries a pin, because RWA-0031 confirmed the release exists and adopted
+      it. That changes nothing about this control: no implementation block, so nothing
+      runs and the report still renders it as mapped. A pinned tool and a live check are
+      different claims, and only the second one belongs in the "has a check behind it" row.
+
+  # ---------------------------------------------------------------------------
+  # Cryptography
+  # ---------------------------------------------------------------------------
+  - id: RWA-0060
+    ism_ids: [ISM-0471, ISM-0479]
+    title: Approved algorithms only, no ECB mode
+    description: >-
+      Ban algorithms outside the AACA set (MD5, SHA-1, DES, 3DES, RC4, Blowfish) and ban
+      Electronic Codebook mode.
+    domain: crypto
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+      - name: bandit
+        version: "1.9.4"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-0471: >-
+        Only AACAs or high assurance cryptographic algorithms are used by cryptographic
+        equipment, applications and libraries.
+      ISM-0479: >-
+        Symmetric cryptographic algorithms are not used in Electronic Codebook Mode.
+    notes: >-
+      Retired in v1 (TODO-14). Non-security MD5 was its documented false-positive class and the noisiest thing shipped. Mapped with no mechanism behind it.
+
+
+            ISM-0471 is the general control and the right primary mapping for banning weak
+      primitives in source. ISM-1080 was dropped from this control: it is specifically
+      about encrypting data at rest, and is claimed by RWA-0061 instead.
+
+  - id: RWA-0061
+    ism_ids: [ISM-1080]
+    title: Approved cryptography for data at rest
+    description: Require an AACA wherever data at rest is encrypted, in code and in IaC.
+    domain: crypto
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: checkov
+        version: "3.3.8"
+        class: iac-scan
+        install: pypi
+        verified_version: true
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1080: >-
+        An AACA or high assurance cryptographic algorithm is used when encrypting data at
+        rest.
+
+  - id: RWA-0062
+    ism_ids: [ISM-1917, ISM-1990, ISM-2073]
+    title: Post-quantum readiness
+    description: >-
+      Report on support for ML-DSA-87, ML-KEM-1024, SHA-384, SHA-512 and AES-256, and
+      require a transition plan to exist.
+    domain: crypto
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: supporting
+    tools:
+      - name: cyclonedx-bom
+        version: "7.3.1"
+        class: cbom
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1917: >-
+        The development and procurement of new cryptographic equipment, applications and
+        libraries ensures support for the use of ML-DSA-87, ML-KEM-1024, SHA-384, SHA-512
+        and AES-256 by no later than 2030.
+      ISM-1990: >-
+        When using ML-DSA and ML-KEM, as per FIPS 204 and FIPS 203 respectively,
+        adherence to pre-requisite FIPS 140-3 validation is preferred.
+      ISM-2073: >-
+        A post-quantum cryptography transition plan is developed, implemented and
+        maintained.
+    notes: >-
+      Supporting and non-blocking. Detecting a PQC-capable library in the dependency
+      graph says nothing about whether it is used on the wire, and ISM-2073 requires a
+      plan, which is a document, not a build artefact. A blocking gate here would be
+      theatre.
+
+  # ---------------------------------------------------------------------------
+  # AI application security
+  #
+  # Every control here is probabilistic unless a reproducible assertion wraps it.
+  # This is where the determinism invariant does the most work.
+  # ---------------------------------------------------------------------------
+  - id: RWA-0070
+    ism_ids: [ISM-1924]
+    title: Prompt injection mitigation
+    description: Adversarial prompt testing against AI endpoints.
+    domain: ai-appsec
+    mechanism: posture
+    enforcement: probabilistic
+    blocking: false
+    mapping_fidelity: supporting
+    tools:
+      - name: garak
+        version: "0.15.1"
+        class: ai-fuzz
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-1924: >-
+        Generative AI applications evaluate user prompts to detect and mitigate
+        adversarial inputs or suffixes designed to elicit unintended behaviour or assist
+        in the generation of sensitive or harmful content.
+    notes: >-
+      Cannot block. Note what the control actually requires: that the application
+      evaluate prompts at runtime. Fuzzing tests whether that evaluation works; it is
+      not itself the control. Passing a garak run is evidence of testing, never proof
+      of mitigation.
+
+  - id: RWA-0071
+    ism_ids: [ISM-2094]
+    title: Content filtering for sensitive data exposure
+    description: Detect and block sensitive data exposure and improper output.
+    domain: ai-appsec
+    mechanism: posture
+    enforcement: probabilistic
+    blocking: false
+    mapping_fidelity: partial
+    deterministic_assertion: >-
+      The check does not ask whether the model behaved. It replays a fixed, committed
+      corpus of recorded responses offline and asserts that no match is found for the
+      pinned PII and secret pattern sets. Same corpus plus same patterns plus same tool
+      versions always yields the same verdict, so the assertion is reproducible even
+      though the model is not. What it verifies is that the filter works on known cases,
+      not that the model is safe on unseen ones. Recorded as the shape such a check would
+      need; nothing implements it yet.
+    tools:
+      - name: presidio-analyzer
+        version: "2.2.364"
+        class: pii-filter
+        install: pypi
+        verified_version: true
+      - name: detect-secrets
+        version: "1.5.0"
+        class: secret-scan
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2094: >-
+        Content filtering is implemented by AI applications to detect and block sensitive
+        data exposure and improper output.
+
+  - id: RWA-0072
+    ism_ids: [ISM-2085]
+    title: Do not expose exact model confidence scores
+    description: >-
+      API contract testing to confirm exact confidence scores are absent from responses
+      and interfaces.
+    domain: ai-appsec
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: direct
+    tools:
+      - name: schemathesis
+        version: "4.24.2"
+        class: schema-test
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2085: >-
+        The exposure of exact AI model confidence scores in API outputs or user interfaces
+        is prevented.
+    notes: >-
+      The one AI control here that could be enforced deterministically: it is a schema
+      assertion on the API contract, not a judgement about model behaviour. Nothing
+      implements it, so it is mapped and reported like the rest.
+
+  - id: RWA-0073
+    ism_ids: [ISM-2103]
+    title: No training on organisational data without consent
+    description: >-
+      Verify provider API calls set the opt-out or zero-retention option offered by that
+      provider.
+    domain: ai-appsec
+    mechanism: posture
+    enforcement: deterministic
+    blocking: false
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2103: >-
+        Organisational data generated, collected or processed by AI applications is not
+        used for training, fine-tuning or improving AI models unless informed and explicit
+        consent has been obtained from data owners in advance.
+    notes: >-
+      The draft proposed checking for `telemetry: false`, which is not a parameter on any
+      major provider SDK. The real mechanism is per-provider and mostly contractual: the
+      retention and training posture is usually set by the account or enterprise
+      agreement, not by a request field. A SAST rule can only check the request-level
+      options a given provider exposes, so this is partial at best.
+
+  - id: RWA-0074
+    ism_ids: [ISM-2072, ISM-2090]
+    title: AI model storage format and inference rate limiting
+    description: >-
+      Require models to be stored in non-executable formats, and require rate limiting on
+      inference endpoints.
+    domain: ai-appsec
+    mechanism: pre-commit
+    enforcement: deterministic
+    blocking: true
+    mapping_fidelity: partial
+    tools:
+      - name: semgrep
+        version: "1.171.0"
+        class: sast
+        install: pypi
+        verified_version: true
+    implementation:
+      gate: pre-commit
+      files:
+        - controls/rules/deserialisation.yaml
+      covers: >-
+        The model-storage half only. runwai-python-model-pickle-load flags loading a model
+        from a pickle-backed format; nothing here enforces inference rate limiting, so the
+        control is partly mechanised and the report should not read it as covered.
+      provenance:
+        origin: original
+        authored_by: ai-assisted
+        verified_on: "2026-07-25"
+    verification_status: verified
+    verification_source: controls/ism-snapshot.json
+    verified_on: "2026-07-25"
+    ism_text:
+      ISM-2072: >-
+        AI models are stored in a non-executable file format that does not allow arbitrary
+        code execution.
+      ISM-2090: >-
+        Rate limiting is applied to inference queries for AI models.
+    notes: >-
+      ISM-2072 is checkable and high value: loading a pickled model executes arbitrary
+      code at load time, so flagging pickle-format model loading is a direct win.

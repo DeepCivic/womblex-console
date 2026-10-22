@@ -1,0 +1,1376 @@
+# runwAI development decisions.
+#
+# Why the template is shaped the way it is, argued by the people who built it. Not the
+# adopting project's decisions: a project built from runwAI starts its own log at
+# docs/adr/, empty, numbered from 0001. A decision log inherited from someone else's
+# repository describes a debate its reader was never part of, and the numbering makes their
+# own first decision look like a footnote to ours.
+#
+# Structured for the same reason backlog.yaml is: the readers are a maintainer and an agent,
+# and neither needs a document format. Nothing in .runwai/ owes the template's conventions
+# anything — these were Markdown ADRs when ADR-0001 still lived in docs/adr/, and the shape
+# outlived the reason for it. The argument stays prose because the argument is the point;
+# what an agent queries — id, status, date, what a record supersedes — is a field.
+#
+# id:      identity. Stable, cited from commit messages, never reused or renumbered.
+# status:  accepted | superseded | withdrawn
+# amends:  what a later record changed about an earlier one, recorded on the earlier one so
+#          it stays true where it is read. Records describe the repository as built.
+
+version: 1
+
+decisions:
+  - id: 1
+    title: What we vendor versus what we build
+    status: accepted
+    date: "2026-07-25"
+    context: >-
+      runwAI is a template repository. People clone it and build their own product on top,
+      so every file here is either something they inherit or something they replace.
+
+
+      Two kinds of material flow in. Some problems are already solved well elsewhere — how
+      to structure an agent guide, how to format a decision record, what a linter or eval
+      config looks like. Others are specific to what runwAI is: the determinism invariant,
+      the provenance rules, the control library.
+
+
+      Two audiences also exist, and they are easy to conflate. Some files describe *this*
+      repository and are read by agents working here. Others exist for the repository
+      someone builds *from* here, and have no subject matter in this one.
+
+
+      Without a stated rule, both questions get relitigated on every contribution, and the
+      answers drift. That is what this record settles. Where each file then lands is
+      decision 2's question, not this one's.
+    decision:
+      what_we_vendor: >-
+        Copy the content in, with a resolved 40-character commit SHA and the upstream
+        licence read from the upstream tree, when the upstream expression is the valuable
+        part and the licence is permissive. The clearest case is calcom/cal.com (MIT,
+        3894f37e): its AGENTS.md skeleton and agents/ layout are a worked solution to
+        structuring agent instructions modularly. We took the structure and the general
+        shape of the Do/Don't and Boundaries sections.
+      what_we_build: >-
+        Write it ourselves when any of the following holds.
+
+
+        1. It encodes runwAI's own policy. The invariant, the provenance rules, the gate
+        definitions. No upstream has an opinion about these.
+
+
+        2. The upstream licence is share-alike. CC BY-SA and copyleft obligations propagate
+        to everyone adopting the template, which is an unacceptable cost to pass on. The
+        OWASP LLM Top 10 is CC BY-SA 4.0, so agents/knowledge/llm-security-guardrails.md
+        cites its identifiers and links the source, and every sentence is ours.
+
+
+        3. What we need is conformance to a published interface, not a copy of an
+        implementation. llms.txt is a specification; biome.json and promptfooconfig.yaml are
+        written against published schemas. Implementing an interface is not copying
+        expression, so these are our files and carry no obligation.
+
+
+        4. Upstream content is domain-specific. cal.com's 43 rules are Prisma, tRPC and
+        Next.js specific. The skeleton transferred; the content did not, and none of it was
+        carried over.
+      where_each_lives: >-
+        AGENTS.md, agents/ and llms.txt are live — they describe this repository, and an
+        adopter who keeps them keeps a true description. biome.json,
+        playwright.config.ts and promptfooconfig.yaml are live for the adopter's toolchain,
+        each at the path its tool reads. .runwai/ is ours: how the template was built,
+        read by anyone working on runwAI itself. Everything vendored lands in the place it
+        works, never in a directory someone must find and copy from — that rule is decision
+        2.
+      no_submodules: >-
+        Content lives in the tree. This matches the existing rule for capabilities and
+        avoids a `git submodule update --init` failure mode for the users least equipped to
+        diagnose it.
+      provenance_is_mandatory_either_way: >-
+        Every derived file is recorded in .runwai/docs/provenance.md with repo, commit, licence
+        and derivation level (vendored, derived, structure, referenced). The field names
+        match the upstream block in schemas/capability.schema.json so the two records can be
+        merged later without a rewrite.
+    consequences:
+      easier: >-
+        A contributor or agent facing "copy this or write it?" has a rule rather than a
+        debate. The repository is self-contained: clone it and everything is present, with
+        no network at use time. Adopters inherit no licence obligations we did not
+        consciously accept, because share-alike content is never copied in.
+      harder: >-
+        Upstream improvements do not arrive on their own. Adopting a newer commit is
+        deliberate: re-resolve the SHA, re-read the licence, update the record. Vendored
+        content drifts from upstream invisibly. Anything vendored for the adopter's
+        toolchain has no subject matter here, so rot in it is silent —
+        .runwai/tools/validate_helpers.py catches only the structural part: that it parses,
+        pins an exact version, and matches the version documented in README.md.
+      accepted_cost: >-
+        Writing our own version of something upstream already wrote is duplicated effort,
+        taken knowingly in exchange for a clean licence position and files that fit a
+        template repository rather than someone else's product.
+    alternatives_considered:
+      - >-
+        Git submodules, particularly for promptfoo. Rejected. A submodule would pull an
+        entire codebase to obtain a roughly thirty-line config template and contradict the
+        "content lives here" rule. Its one real advantage, pinning by SHA, is available by
+        vendoring at a resolved SHA.
+      - >-
+        Paraphrase everything, vendor nothing. This was the initial plan, formed when
+        api.github.com appeared to block all GitHub access and no commit SHA could be
+        resolved. Once the git protocol was found to work — it reaches any public
+        repository, unlike the REST API — paraphrasing became unnecessary. Avoiding a
+        licensing question we can simply answer correctly discards attribution that costs
+        nothing to record.
+      - >-
+        Vendor upstream content wholesale, including rule sets. Rejected. cal.com's rules
+        are excellent and entirely about their stack. Carrying them would hand every adopter
+        a set of instructions for a codebase they do not have, which is worse than no
+        instructions.
+      - >-
+        Keep the 62-entry research inventory as a vendoring backlog. Rejected, and the file
+        was deleted. No entry had been resolved, several were fabricated, and its verifier
+        was written against the blocked REST endpoint so it could never have run. Ten
+        checked sources replaced sixty-two unchecked ones. A long list of unverified
+        references reads as thoroughness and functions as noise.
+
+  - id: 2
+    title: Ship working files, not templates of files
+    status: accepted
+    date: "2026-07-26"
+    amends: >-
+      Decision 11 (2026-07-28) retired the two-modes clause of the AGENTS.md placement:
+      the file now speaks only to the adopter's agent, and maintainer instruction lives in
+      .runwai/MAINTAINERS.md, loaded deliberately. The placement itself — one live
+      AGENTS.md at the root, never a skeleton, never a second copy — is unchanged.
+    context: >-
+      Decision 1 settles what gets vendored in versus written here. This one settles where
+      it lands, which is a separate question with a worse default: a directory of starter
+      files that a person building on runwAI is expected to find, copy into their own
+      project, and edit.
+
+
+      That default does not survive contact with the audience this repository is written
+      for. README.md opens by stating the design constraint plainly — you should not have to
+      know what to ask for — and a file that only works once someone knows to copy it
+      demands exactly that knowledge. Content nobody knows to copy is indistinguishable from
+      absent content to the person it was written for, while remaining indistinguishable
+      from coverage to everyone else. Both readings are wrong, and neither is visible from
+      inside the repository.
+    decision:
+      rule: >-
+        Everything the adopter receives ships as the working thing it claims to be, at the
+        path its tool already reads. A vendored command is a command in .claude/commands/. A
+        vendored skill is a skill in agents/skills/. A formatter config is biome.json at the
+        root. There is no directory of files awaiting a copy step, and adding one requires
+        overturning this record.
+      placements:
+        - biome.json at the root, where Biome looks for it
+        - playwright.config.ts at the root, where Playwright looks for it
+        - promptfooconfig.yaml at the root, where promptfoo looks for it
+        - >-
+          AGENTS.md and llms.txt at the root, one of each, adapted in place. This is the
+          sharper half of the decision. runwAI is adopted by cloning, so an adopter already
+          has a working AGENTS.md and llms.txt at their root, and a skeleton copy of either
+          — bracketed placeholders, unusable until rewritten — is not a starting point but a
+          decoy: an agent that reads the wrong one follows instructions for a codebase that
+          does not exist. Where that file must speak to both audiences, it does so in a
+          two-modes section rather than a second file.
+      unexercised_is_not_inert: >-
+        runwAI is Python, YAML and Markdown. Nothing here runs Biome, Playwright or
+        promptfoo, and promoting a file to the root does not change that. The distinction
+        that matters: a file is *inert* when it does nothing for anyone until a human
+        performs a manual step nothing prompts them to take — not acceptable, and nothing
+        here ships that way. A file is *unexercised* when it is live and correct at its
+        destination and simply has no subject matter in this repository — acceptable, and it
+        must be stated where the adopter reads rather than buried.
+
+
+        An unexercised file still owes whatever check can be made of it. Being unable to run
+        Playwright is not a licence to ship a config nobody looked at, so
+        .runwai/tools/validate_helpers.py asserts that each root config parses, declares an
+        exact version, and matches the version documented in README.md. Version drift
+        between a config and its documentation was the one defect that could have reached an
+        adopter silently; it now fails the build.
+      our_own_rules_apply_to_what_we_ship: >-
+        Adopter-facing files are not excluded from .semgrepignore. Our rulesets are only
+        worth shipping to the extent that an adopter's agent runs them over an adopter's
+        files, and the root configs are the first such files in the tree, so
+        playwright.config.ts is scanned like any other source file. Measured when the rule
+        was adopted: 0 findings across all four rulesets of the day, two of which TODO-14 later
+        retired. A rule that is noisy on ordinary
+        config is a rule to fix, not a path to hide.
+      it_extends_to_artefacts_that_do_not_exist_yet: >-
+        This is not only about config files. Anything runwAI grows for the adopter is bound
+        by the same rule, most immediately the plain-language ISM posture readout in
+        TODO-10. That artefact ships as a draft with real content in it — the repository's
+        actual posture, generated from what the checks actually found — never as a blank
+        template of a system security plan for someone to fill in. A blank compliance
+        document is the purest form of the failure this record exists to prevent: it looks
+        like coverage, is indistinguishable from absence, and the person who most needs it
+        is the least equipped to notice the difference.
+    consequences:
+      easier: >-
+        There is one answer to "where does this file go", and it is "where it works". An
+        adopter's agent finds the configs without being told they exist, because they are at
+        the paths every relevant tool already reads. The limits of an unexercised config are
+        stated in README.md, where an adopter reads, and enforced by a check rather than a
+        caveat.
+      harder: >-
+        Live files are in scope for our own scanners, so a rule that fires on generic config
+        is our problem rather than something an ignore path absorbs. The root directory
+        carries three files that do nothing here, which reads as clutter to anyone who has
+        not read this record — hence the tree entry in AGENTS.md saying so in place.
+      accepted_cost: >-
+        biome.json, playwright.config.ts and promptfooconfig.yaml are still not executed by
+        any gate in this repository, and no decision about their location changes that. What
+        changed is that they now arrive where they work, and that the part of them which can
+        be checked deterministically is checked.
+    alternatives_considered:
+      - >-
+        A directory of starter files, placed by a setup command. A working mechanism, and it
+        keeps generic config out of our scanners. Rejected because it makes the material
+        conditional on an agent running the right command, which is a subtler version of
+        conditional on a human copying the right file. The invariant permits AI to perform
+        setup work, but a file that is already correct in place needs no setup at all.
+      - >-
+        A directory of starter files, each justifying its inertness in one line. Rejected
+        for the three configs. "A JS toolchain config is inert in a repository with no JS"
+        justifies why it does not run here; it does not justify putting it somewhere the
+        adopter never opens. Those are different questions, and only the second one was ever
+        the problem.
+      - >-
+        One live AGENTS.md, but a skeleton llms.txt. Considered, because an llms.txt
+        skeleton is where the format's sharpest trap shows up: guidance written as `# note`
+        is itself an H1, which silently breaks the file it explains. Rejected — the check
+        that catches it is what has value, not the skeleton, and it runs against the live
+        llms.txt where a break actually matters.
+
+  - id: 3
+    title: The maintainer's tree owes the template nothing
+    status: accepted
+    date: "2026-07-26"
+    context: >-
+      .runwai/ held two decision records as Markdown files named like ADRs, with a Status
+      line, a Date line and an index README, because ADR-0001 was written when it still
+      lived in docs/adr/. Decision 1 of that log was moved here when TODO-11 settled that
+      the template's decisions are not the adopter's; the format came with it and nobody
+      argued for it.
+
+
+      That left "ADR-0002" ambiguous on its face — it reads like a docs/adr/ entry, which is
+      exactly the tree the record says it is not in — and it left the helper-layer self-check
+      imposing the template's conventions on a directory that is not the template's output.
+
+
+      The same confusion reached further than filenames. Four Python self-checks sat in
+      tools/ at the repository root. An agent opening a template repository and finding a
+      root-level tools/ directory of .py files reasonably concludes it is looking at a Python
+      project, which narrows what it offers to build. None of those files has anything to do
+      with what an adopter builds; every one of them checks runwAI's own structure.
+    decision:
+      records_are_structured_data: >-
+        The decision log is .runwai/decisions.yaml, one file, in the shape backlog.yaml
+        already uses. Fields for what is queried — id, status, date, what a record amends —
+        and block scalars for the argument, because the argument is the load-bearing part
+        and JSON carries it as one escaped string that nobody reads better than prose. The
+        ADR framing is gone from the naming: these are decisions 1, 2 and 3, and docs/adr/
+        remains the adopter's log, empty and numbered from 0001.
+      maintainer_python_lives_in_runwai: >-
+        Every maintainer tool moved from tools/ to .runwai/tools/. The template is not a
+        Python project and should not read as one from the root listing. What remains in the
+        tree outside .runwai/ is the adopter's material and the capability rulesets, whose
+        selftest fixtures are deliberately paired .py and .js because the rules target both
+        languages — that pairing reads as rule fixtures rather than as an implementation
+        language.
+      deleting_runwai_now_removes_the_self_checks: >-
+        README.md and AGENTS.md have always said .runwai/ is safe to delete. That is still
+        true and now means more: deleting it removes runwAI's own self-checks, which is
+        correct, because they validate the template's structure and not the adopter's code.
+        It also means the hooks and CI steps that invoke them must go in the same motion.
+        AGENTS.md carries that instruction where the agent performing setup will read it,
+        rather than leaving an adopter with a gate that fails on a missing file.
+    consequences:
+      easier: >-
+        The root listing of a fresh clone now describes what the adopter is getting rather
+        than what the maintainer uses. An agent querying the decision log reads fields
+        instead of parsing headings, and .runwai/ can adopt whatever shape suits its two
+        readers without arguing it against the template's conventions.
+      harder: >-
+        Every path to a self-check moved, so the pre-commit config, the PR gate, the docs
+        and the agent rules all had to change together. A stale invocation of
+        `python3 .runwai/tools/report.py` in someone's notes now fails.
+      accepted_cost: >-
+        Deleting .runwai/ is no longer a single-file-tree deletion with no follow-up: the
+        gates that call into it have to be pruned at the same time. That cost is carried by
+        the setup agent, which is where AGENTS.md already puts onboarding work.
+    alternatives_considered:
+      - >-
+        Rename the records to something that is not ADR-shaped and leave them as Markdown.
+        Solves the ambiguity and nothing else. The helper-layer check would still be
+        enforcing a document format on a tree whose readers are an agent and a maintainer.
+      - >-
+        JSON rather than YAML. Considered seriously, because both readers parse JSON
+        happily. Rejected because these records are mostly argument, and JSON turns a
+        hundred lines of reasoning into one escaped string. YAML gives queryable fields and
+        readable prose in the same file, which is the split backlog.yaml already landed on.
+      - >-
+        Leave the tools at the root and document that runwAI is not a Python project.
+        Rejected on the same grounds as decision 2's rejection of starter directories: it
+        makes the correct reading conditional on someone finding and believing a caveat,
+        when moving the files makes the wrong reading impossible.
+
+  - id: 4
+    title: One canonical agent layer, thin vendor adapters
+    status: accepted
+    date: "2026-07-26"
+    context: >-
+      A reader looking at the tree saw `agents/` and `.claude/commands/` and could not tell
+      why both existed. The relationship was in fact already designed — the adapters hold
+      pointers, not copies — but three things underneath it made the design unreadable.
+
+
+      The same four commands were enumerated in four files: README.md's quick start,
+      AGENTS.md's Commands section, agents/commands.md, and
+      agents/rules/reference-local-dev.md. Moving the tools into .runwai/tools/ meant
+      correcting all four, which is the evidence that four was three too many.
+
+
+      "Commands" also meant two unrelated things one directory apart: agents/commands.md was
+      a reference of shell commands, `.claude/commands/` holds Claude Code slash commands.
+
+
+      And `agents/skills/` is named like a directory a skill runtime loads. Claude Code
+      reads `.claude/skills/`, which this repository does not use, so that content is
+      reachable only through `.claude/commands/vendor.md`.
+    decision:
+      two_layers: >-
+        Everything an agent needs exists once, vendor-neutral, in AGENTS.md and agents/. On
+        top sit thin adapters at the paths a specific tool requires — today only
+        `.claude/commands/*.md`, three files holding pointers and no content. An adapter
+        exists because a slash command only works from that path: decision 2 applied to a
+        vendor convention, not a second copy of the material.
+      one_canonical_list: >-
+        agents/running-the-checks.md is the single enumeration of the self-checks, the
+        gates, exit codes and upstream verification. AGENTS.md, README.md, llms.txt and
+        reference-local-dev.md link to it. README's copy was not moved but deleted: those
+        are maintainer commands, and README is read by an adopter who may have deleted the
+        tree they live in.
+      commands_means_one_thing: >-
+        agents/commands.md was renamed to agents/running-the-checks.md. `.claude/commands/`
+        keeps the word for slash commands; shell commands live in a file that does not claim
+        it.
+      skills_stay_where_they_are: >-
+        agents/skills/ keeps its location and is documented as canonical content reached
+        through its adapter, not as a loader path. Moving it to `.claude/skills/` would make
+        it load in one tool at the cost of making it vendor-specific, which is the wrong
+        trade for the one layer that is meant to be neutral.
+    consequences:
+      easier: >-
+        A path that moves is corrected in one file. A reader arriving at either entry point
+        finds the two layers stated in a table rather than inferring them from a directory
+        listing.
+      harder: >-
+        The rename breaks any external link to agents/commands.md. Nothing in the tree
+        pointed at it that was not updated, and validate_helpers.py caught the one that was
+        missed.
+      accepted_cost: >-
+        `agents/skills/` still reads like a loader path to anyone who does not read the note
+        beside it. The alternative traded neutrality for one tool's convenience, which costs
+        more.
+    alternatives_considered:
+      - >-
+        Fold `.claude/commands/` into agents/ and drop the adapters. Rejected outright: a
+        slash command that is not at `.claude/commands/` is not a slash command, so this
+        deletes working functionality to tidy a directory listing.
+      - >-
+        Keep the name commands.md and explain the distinction in prose. Rejected. The
+        explanation would sit in exactly the two files whose names are the problem, and a
+        reader who is confused by a name is not reliably reading the paragraph under it.
+
+  - id: 5
+    title: A control carries its own implementation; there is no capability layer
+    status: accepted
+    date: "2026-07-26"
+    context: >-
+      The tree held 81 files across 26 directories to do four things. Twelve of those
+      directories and twenty of those files were capabilities/ and schemas/ — a manifest,
+      a README, a files/ directory and a selftest/ directory per capability, plus two JSON
+      Schemas to validate the manifests.
+
+
+      That shape was designed for a library of many capabilities. The product ships two
+      rulesets. At that count the ceremony costs more than it buys: four paths and a
+      manifest to deliver one YAML file and its fixtures, and a schema directory whose
+      entire job is guarding files that a validator already reads.
+
+
+      The three capabilities that were not rulesets — IaC scanning, the SBOM release gate,
+      secret scanning — served none of the four things v1 does. One of them, the checkov
+      check-ID verifier, was the only red job in CI for the life of the branch.
+    decision:
+      implementation_lives_on_the_control: >-
+        A capability manifest carried exactly three facts worth keeping — which gate runs
+        it, which files carry it, where those files came from. Those are now an
+        `implementation` block on the control record in controls/registry.yaml. A control
+        with the block has a mechanism in this repository; a control without one is mapped
+        and nothing runs, which the security report states in those words rather than
+        implying coverage. validate_registry.py checks the gate is one that exists and that
+        every named file is in the tree, so a control cannot reach the report's "has a check
+        behind it" row on an unverified claim.
+      rules_and_fixtures_are_two_directories: >-
+        controls/rules/ and controls/tests/. This is the one place the flattening pushed
+        back and won on the merits: `semgrep --test` pairs a rules directory with a parallel
+        fixture directory by basename and refuses more than one config, so rule files loose
+        in controls/ could not be tested at all. The shape that works also runs both
+        rulesets in one pass — eight assertions where the per-capability loop ran four and
+        four.
+      schemas_become_code: >-
+        The rules schemas/control.schema.json carried — required fields, enums, identifier
+        patterns — are about thirty lines in validate_registry.py. Worth stating precisely
+        because it sounds like a loss of rigour and is not: the determinism invariant, the
+        forbidden LLM tool classes and the floating-version rejection were never in the
+        schema. They were always Python, and they are untouched.
+      credential_scanning_is_a_control_not_a_directory: >-
+        Its mechanism was always .pre-commit-config.yaml — the capability directory held a
+        manifest and a README and no files at all. It is a control record now, which is what
+        it always was.
+      the_adopter_creates_what_they_need: >-
+        An adopting project that wants a capability structure can build one. Shipping the
+        scaffolding for a library nobody has yet is the same error as shipping a directory
+        of files nobody copies, which decision 2 already refused.
+    consequences:
+      easier: >-
+        Half the directory tree is gone and the root listing describes what the template
+        actually does. Adding a check is a rule file, its fixtures and a block on the
+        control record, rather than five paths and a schema to satisfy. CI turns green,
+        because the only failing job went with the capability it tested.
+      harder: >-
+        Provenance discipline is thinner. capability.yaml made an unlicensed vendored file
+        structurally impossible; the implementation block asks for the same fields but there
+        is one fewer place the validator can catch an omission. The overlap rule — two
+        capabilities may not vendor the same upstream path — is now review rather than
+        machinery, because there are no manifests to compare.
+      accepted_cost: >-
+        SBOM, CBOM, signing and the release-gate workflow are gone rather than deferred.
+        They are real work and a later version's; shipping a workflow that ran a capability
+        nobody kept would have been coverage theatre of exactly the kind this repository
+        exists to refuse.
+    alternatives_considered:
+      - >-
+        Keep capabilities/ and accept the directory count. Defensible if the library ever
+        grows, and the reason to reject it now is that the shape was carrying two rulesets
+        and three capabilities that v1 does not want. Reinstating it later costs one commit;
+        carrying it unused costs every reader.
+      - >-
+        Flatten the rule files loose into controls/ with no rules/ subdirectory. Tried, and
+        it fails: semgrep --test cannot pair a config with fixtures that way, so the rules
+        would ship untested. The subdirectory is a tooling requirement, not tidiness.
+      - >-
+        Keep schemas/ for the registry alone. Rejected. One JSON Schema guarding one
+        document, when the validator that loads the document is already reading every field
+        it would check, is machinery about machinery.
+
+  - id: 6
+    title: runwAI ships no merge gate, and stops describing one
+    status: accepted
+    date: "2026-07-26"
+    context: >-
+      The template described three gates and shipped two workflows. `pr-gate` ran on every
+      pull request, and its header said "A PR that violates a technical boundary cannot
+      merge." The registry backed the claim in data: `mechanism: pr-gate` on twenty-nine
+      controls, `blocking: true` on twenty-three of them, and `release-gate` on five more
+      whose workflow had already been deleted with the capability that fed it.
+
+
+      None of it was true. `main` carries no branch protection, so nothing required any job
+      to pass before a merge, and nothing ever had. The workflow ran, went green, and
+      prevented exactly nothing — the same shape as a scanner installed in report-only mode,
+      which is the failure this repository names in five places and had shipped in its own
+      CI.
+
+
+      The gap is not fixable from inside the template, and that is the whole point.
+      Preventing a merge is branch protection: a setting on the repository at the forge. A
+      template can carry a workflow file; it cannot carry a repository setting. So a template
+      that promises a blocking gate is promising something it structurally cannot install,
+      and the adopter finds out the first time something merges red.
+    decision:
+      the_workflow_is_deleted: >-
+        .github/workflows/pr-gate.yml is gone. Its jobs that earn their place — the
+        structural self-checks, `semgrep --test` on the rulesets, bandit over the Python we
+        ship, and the full-history secret scan — moved into `posture`, which reports and
+        blocks nothing. Its `semgrep --error` pass did not move: `posture` already runs the
+        same rulesets over the same tree and keeps the findings, and a second pass differing
+        only in its exit code would have re-created the gate under a new name.
+      two_mechanisms_and_both_are_real: >-
+        `mechanism` now takes `pre-commit` or `posture` and nothing else. Both name a file in
+        this tree. `pre-commit` is the only check here that stops anything and is bypassable
+        with --no-verify; `posture` reports. Every control that named a deleted gate was
+        rerouted, and `blocking: true` survives only on the six controls whose rulesets the
+        pre-commit hook actually runs with --error.
+      the_invariant_is_mechanical: >-
+        validate_registry.py rejects `blocking: true` on any control routed to a
+        non-blocking mechanism. This is the cheapest lie the registry could tell — one word,
+        no code change, no visible defect — so it is enforced rather than reviewed, in the
+        same way the determinism invariant is.
+      ism_2032_is_downgraded: >-
+        RWA-0002 mapped ISM-2032 — build only after automated testing completes without
+        warnings — as `direct`. With no gate it is `supporting`: the workflow produces
+        evidence that the checks ran, and nothing refuses to proceed. Recorded here because
+        the honest number is smaller and that is the direction this repository moves in.
+    consequences:
+      easier: >-
+        The documentation and the machinery agree. A reader who believes what README, the
+        registry and the security report say about enforcement now believes something true,
+        which is the test .runwai/MAINTAINERS.md sets for a good change.
+      harder: >-
+        Nothing stops a bad merge, and the template no longer implies otherwise. An adopter
+        who wants enforcement has to turn on branch protection themselves and point it at
+        the `posture` jobs. That is a forge setting we can document and cannot ship, so the
+        documentation says so plainly rather than filling the gap with a workflow that looks
+        like an answer.
+      also: >-
+        Deleting a green workflow is the kind of change agents/rules/ci-never-weaken-a-gate.md
+        exists to prevent, so the distinction matters: that rule prohibits removing
+        enforcement to make a red build green. This removed a claim of enforcement that was
+        never enforcing, while CI was green, and moved every check that was doing real work.
+    alternatives_considered:
+      - >-
+        Keep the workflow and rename it. Cheapest, and it preserves the jobs — but the
+        registry would still route controls to a "gate" and the word would keep doing work
+        the machinery does not do. Rejected: the claim was the problem, not the filename.
+      - >-
+        Keep pr-gate and add branch protection. This is the only option that makes the
+        original claim true, and it is not available to a template: the setting lives on the
+        repository, not in the tree, so every adopter would inherit the promise and none of
+        them the protection.
+      - >-
+        Leave `blocking` as an aspiration and document the gap. Rejected on precedent. That
+        is exactly what `automatable_count: 754` was before it was deleted from the index —
+        a number describing what could be true, read by everyone as what is.
+
+  - id: 7
+    title: Two secret scanners, split by where each can honestly run
+    status: superseded
+    superseded_by: 19
+    date: "2026-07-26"
+    context: >-
+      RWA-0010 named detect-secrets, pinned and running, and gitleaks, which had no version
+      and ran nowhere — one of the nine tools sitting in pinning.md because its release list
+      was unreachable from where this was authored. So the control's second tool was a name
+      with nothing behind it.
+
+
+      keyhog is a Rust secret scanner with a far larger detector corpus than
+      detect-secrets' plugin set, and it walks reachable git history rather than tracked
+      files alone. It is offered as a CLI, a pre-commit hook and a GitHub Action, and the
+      obvious move was to adopt it everywhere and drop detect-secrets.
+
+
+      The obvious move is wrong in one specific place. keyhog's `.pre-commit-hooks.yaml`
+      declares `language: system`: it runs whatever `keyhog` happens to be on PATH,
+      installed beforehand by a shell installer. Upstream documents why — `language: rust`
+      had pre-commit build the crate with default features, which link libhyperscan-dev,
+      absent on most machines, so the hook failed to build for nearly every adopter. The
+      constraint is real and not ours to fix.
+
+
+      That collides with two things this repository has already decided. Onboarding is one
+      step (AGENTS.md), and `language: system` adds an install before the hook works at
+      all. And an unpinned scanner is a non-deterministic control by definition — a binary
+      on PATH is pinned by nothing.
+    decision:
+      # A key named for the scanner, not a value: detect-secrets' keyword detector
+      # reads `secrets...:` and cannot tell a decision's field name from a
+      # credential. Suppressed here with the reason, rather than in the baseline
+      # where nobody reviewing this file would see it.
+      detect_secrets_keeps_the_hook: >-  # pragma: allowlist secret
+        It is `language: python` with additional_dependencies, so pre-commit installs it
+        and `pre-commit install` remains the whole of setup. The version is pinned in the
+        hook config where a reader can see it.
+      keyhog_takes_ci: >-
+        On a runner, both objections evaporate: the action installs a specific build, and
+        the version is pinned in the workflow. It scans the working tree and, in a second
+        pass, reachable history — the pass that catches a credential committed behind
+        --no-verify and deleted later. It replaces gitleaks in the registry, which drops
+        the unpinned count from nine to eight.
+      pinned_to_a_commit_not_a_tag: >-
+        The action is referenced by the full commit SHA behind v0.5.47, not the `@v0` the
+        README suggests. A major tag moves, and AGENTS.md already forbids bare major tags
+        for exactly this reason. This is the tool's own action from the repository that
+        publishes the binary, so the trusted-surface argument against third-party
+        marketplace wrappers does not apply to it.
+      verify_stays_off: >-
+        keyhog's --verify calls vendor APIs to establish which found credentials are still
+        live. It is off by default and CI sets it off explicitly, in a comment that says
+        why: the verdict would depend on a third party's state at scan time, which breaks
+        determinism, and the check would send candidate secrets off the machine. A scanner
+        that exfiltrates what it finds is not a control.
+      backend_is_explicit: >-
+        `--backend cpu` rather than `auto`. Autoroute selects an engine from what the
+        runner happens to have, including GPU paths. A check that picks its own engine per
+        machine is not reproducible, whatever the detection parity claims.
+    consequences:
+      easier: >-
+        Far more detectors and history coverage on every push and pull request, and one
+        fewer unpinned tool in the registry. Setup is unchanged for the adopter — nobody
+        has to install a Rust binary to commit.
+      harder: >-
+        The local and CI verdicts can now diverge, which the old arrangement was
+        specifically built to prevent: the CI job used detect-secrets-hook precisely so it
+        could not disagree with the hook. Two corpora means a commit can pass locally and
+        be flagged in CI. Recorded as the accepted cost of the wider net, and stated in the
+        workflow next to the job rather than left for someone to discover.
+      also: >-
+        `cargo install keyhog` is documented upstream and is not verified here — crates.io
+        refuses CONNECT from this environment. The GitHub Action pin, resolved over the git
+        protocol, is what ships, and pinning.md records both the receipt and the gap.
+    alternatives_considered:
+      - >-
+        keyhog everywhere, drop detect-secrets. One tool, one corpus, no divergence — and
+        it costs one-step onboarding, which is load-bearing enough that AGENTS.md makes it
+        an obligation. It also puts an unpinned PATH binary in a control's decision path.
+      - >-
+        keyhog everywhere alongside detect-secrets. Maximum coverage, two baselines, two
+        sets of false positives, and the same install step. The coverage is not worth the
+        maintenance on a template whose whole argument is that a noisy check gets switched
+        off.
+      - >-
+        Keep gitleaks and pin it properly. Defensible, and it does not survive contact with
+        the facts: the release list was unreachable when this was authored, which is why it
+        was unpinned for the life of the template. keyhog resolved cleanly on the first
+        attempt.
+
+  - id: 8
+    title: The root is the adopter's shop window
+    status: accepted
+    date: "2026-07-28"
+    amends: >-
+      Decision 9 (2026-07-28) removed this record's second clause: being "the artefact
+      the repository exists to hand the adopter" no longer earns a root slot on its own,
+      and security-report.md moved to docs/security-report.md on the maintainer's second
+      review of the root. The rule that survives is the first clause alone — a tool or a
+      convention reads the path at the root.
+    context: >-
+      Backlog id_2 was filed against a real experience, clarified by the maintainer on
+      review: a visitor landing on the GitHub page sees the root listing before any
+      prose, and next to the repositories they already know it reads as bizarre — two
+      sibling reports, three configs no code here exercises, a STEAL manifest. That is
+      the template's own first impression, which the first-session delete path cannot
+      reach: a visitor sees the root before they ever clone. The mechanism id_2
+      proposed — configs waiting in .tools/ for a selective unpack — is the alternative
+      decision 2 already names and rejects, so the need has to be met without moving
+      anything a tool reads.
+    decision:
+      rule: >-
+        A file earns its root slot in exactly one of two ways: a tool or a convention
+        reads it there (decision 2's placements, AGENTS.md, llms.txt, LICENSE), or it
+        is the artefact the repository exists to hand the adopter (security-report.md).
+        Anything that is runwAI's own record lives in .runwai/, identifiable by
+        location. Applied immediately: report.md, the maintainer-facing self-check
+        readout, moves to .runwai/docs/report.md. No tool read it at root, it was absent
+        from llms.txt because it was never adopter content, and beside
+        security-report.md it was the most confusing pair a visitor could meet first.
+      presentation: >-
+        What remains unusual at the root is explained where the visitor actually
+        looks: README.md's "Where things are" opens by saying the root is busier than
+        most repositories and why, with one line per entry. Bizarre-but-explained is
+        acceptable. Bizarre-and-silent is not. Hidden-and-broken — the unpack
+        directory — is decision 2's rejected alternative.
+      membership_test: >-
+        Added on maintainer review, and it is the converse that makes the rule
+        two-way. Because AGENTS.md instructs the onboarding agent to offer pruning
+        .runwai/, pruning must never cost the adopter anything — so nothing designed
+        for the adopter's benefit may live in it. And because it is the one directory
+        maintainers actually read, anything inside it that is not useful to
+        maintainers is clutter and gets deleted. Both directions audited when this
+        was recorded: everything in .runwai/ serves template maintenance, and the
+        adopter-facing generator (.github/scripts/security_report.py) already lives
+        outside it. Backlog id_1's placement rule — verify.py in .github/scripts/,
+        never .runwai/tools/ — is this test applied in advance.
+    consequences:
+      easier: >-
+        Deleting .runwai/ now takes the self-check readout with it, so the
+        first-session prune list in AGENTS.md is one item shorter, and a stale report
+        about a directory that is gone can no longer be left behind. A visitor meets
+        one report, the one written for them.
+      harder: >-
+        The nanochat-derived pattern of a root report file no longer matches the
+        upstream placement it was lifted from; .runwai/docs/provenance.md records the
+        pattern, which survives the move, not the path.
+      accepted_cost: >-
+        The three toolchain configs still sit at the root doing nothing in this
+        repository. That is decision 2's accepted cost restated — they are
+        unexercised, not inert — and the README now says so at the point a visitor
+        wonders about it.
+    alternatives_considered:
+      - >-
+        The .tools/ unpack directory as filed in backlog id_2. Rejected without
+        reargument: decision 2 names that mechanism in its alternatives and rejects
+        it, and a backlog item does not overturn a decision record.
+      - >-
+        Moving security-report.md into docs/ as well. Rejected: it is the artefact
+        this repository exists to produce, and burying the deliverable to tidy the
+        shop window inverts the priorities.
+
+  - id: 9
+    title: A root slot means something reads the path there, with no second clause
+    status: accepted
+    date: "2026-07-28"
+    context: >-
+      Decision 8 tidied the root and kept security-report.md there under a second clause:
+      the artefact the repository exists to produce earns a slot even though nothing reads
+      it at that path. On reviewing the result, the maintainer's verdict was that the root
+      still reads cluttered — and the one file left whose slot rested on that second
+      clause, rather than on a tool or convention reading the path, was the report.
+    decision:
+      the_rule_loses_its_second_clause: >-
+        A file sits at the root only when a tool or a convention reads it there: the
+        toolchain configs and .pre-commit-config.yaml at the paths their tools read,
+        AGENTS.md, llms.txt, LICENSE, README.md and STEAL.md by convention, Makefile
+        because make reads it there (decision 10). One test, no judgement call about
+        which artefact matters most.
+      the_report_moves_to_docs: >-
+        docs/security-report.md, beside docs/setup.md — the two files that describe this
+        repository's current state now live in the same place. The generator's default
+        output path, the posture workflow's summary, artifact and drift steps, and every
+        documented reference moved in the same commit. The generated report carries no
+        relative links, so nothing inside it broke.
+      discovery_moves_to_readme: >-
+        The shop window was never really the file listing — it is README.md, which GitHub
+        renders below it. The report is linked from the sections a visitor actually
+        reads, and burying-the-deliverable, decision 8's objection, is answered by the
+        link rather than by the slot.
+    consequences:
+      easier: >-
+        The root rule is one test with no exception to argue, and the listing a visitor
+        meets is shorter by the one file that made them ask what generated it.
+      harder: >-
+        External links to the old root path break; the posture workflow and the
+        generator had to move in step, which is the same one-commit coupling every path
+        move here has carried.
+      accepted_cost: >-
+        The deliverable is one directory deeper than the front door. README.md carries
+        the discovery, which is where a reader who does not already know the filename
+        was going to start anyway.
+    alternatives_considered:
+      - >-
+        Keep the report at the root, per decision 8. Rejected by the same maintainer on
+        second review: the second clause proved to be exactly the judgement call the
+        rest of the rule exists to avoid, and the clutter it protected was the last of
+        it.
+
+  - id: 10
+    title: The first session's mechanical steps are Makefile targets
+    status: accepted
+    date: "2026-07-28"
+    context: >-
+      AGENTS.md's first session mixes judgement — say what they have, ask what they are
+      building, rewrite the file — with mechanics: pinned pip installs, hook install, a
+      full run, the verification receipts, the report. The mechanics existed only as
+      prose and fenced commands, replayed by an agent transcribing them, which is where
+      a wrong flag or a stale pin slips in. The maintainer asked for a deterministic
+      replication of the first session.
+    decision:
+      make_targets: >-
+        A root Makefile with one target per mechanical step — setup, hook, check,
+        verify, report — and first-session running them in order. Every install is
+        pinned to an exact version in the target itself; setup is the only step that
+        touches the network. Judgement steps stay in AGENTS.md, which now tells the
+        setup agent to run the target rather than transcribe commands.
+      earns_its_slot: >-
+        Under decision 9's test, not despite it: make reads Makefile at the root by
+        convention, the same way each toolchain config earns its place.
+      the_canonical_list_stays_canonical: >-
+        Decision 4 made agents/running-the-checks.md the single enumeration of the
+        checks. The Makefile wraps the adopter-facing subset and adds no command of its
+        own, states so in its header, and points back at the list — an adapter in
+        decision 4's sense, executable rather than vendor-specific.
+    consequences:
+      easier: >-
+        One command replays the session's mechanics identically for an agent, a human,
+        or CI, and the receipt run (verify.py) stops being the step most often skipped.
+      harder: >-
+        The pins now appear in one more file. The helper self-check does not yet compare
+        the Makefile's pins against running-the-checks.md, so that agreement is review
+        rather than machinery.
+      accepted_cost: >-
+        make becomes a soft dependency. Soft, because every target wraps one documented
+        command that remains runnable without it.
+    alternatives_considered:
+      - >-
+        A shell script in .github/scripts/. The same determinism, but nothing reads a
+        script there unprompted — an adopter has to be told it exists, which is the
+        discovery failure decision 2 refuses. make is the convention that makes the
+        entry point self-announcing.
+
+  - id: 11
+    title: AGENTS.md speaks only to the adopter
+    status: accepted
+    date: "2026-07-28"
+    context: >-
+      AGENTS.md carried both audiences: an adopter half, then a mode-selection section
+      and a maintainer half — Do/Don't, boundaries, project structure, verification
+      discipline — below a horizontal rule. The maintainer half was more than half the
+      file. The audiences are not symmetric: the adopter's agent cannot be prompted to
+      load the right context, which is the whole argument for AGENTS.md existing, while
+      a maintainer can and does say what they are working on. Every adopter session paid
+      for the maintainer's manual, and the mode fork was the single most likely way to
+      spend a first session in the wrong mode.
+    decision:
+      one_audience: >-
+        AGENTS.md now addresses the adopter's agent and nothing else. The mode-selection
+        section and everything below the horizontal rule moved into
+        .runwai/MAINTAINERS.md, which was already the maintainer's entry point and now
+        holds the working rules too. What remains at the top of AGENTS.md is a two-line
+        pointer: a session about maintaining the template says so and loads
+        MAINTAINERS.md deliberately.
+      maintainers_prompt_their_context: >-
+        The asymmetry is the design. Unprompted knowledge delivery exists for the reader
+        who cannot know what to ask for; a maintainer is the reader who can. Assuming
+        maintainers state their context costs them one line per session and buys every
+        adopter a file that is entirely about them.
+      first_session_gets_simpler: >-
+        The setup agent's rewrite instruction no longer says "delete everything below
+        the horizontal rule" — there is nothing below it. It says delete the maintainer
+        pointer and the first-session section, keep the obligations, add what an agent
+        cannot infer.
+    consequences:
+      easier: >-
+        The file every session loads is half the length and all of it applies. The
+        wrong-mode failure — a maintainer process applied to an adopter's project — now
+        requires loading a dot-directory file on purpose.
+      harder: >-
+        A maintainer who forgets to load MAINTAINERS.md gets no Do/Don't list at all,
+        where before the wrong file at least contained it. The pre-commit self-checks
+        still catch the mechanical part of what the list guarded.
+      accepted_cost: >-
+        Two entry points to keep coherent instead of one file with an internal seam.
+        The seam was the part that misfired, so the trade is taken knowingly.
+    alternatives_considered:
+      - >-
+        Keep both halves and sharpen the mode-selection prose. Rejected: the cost was
+        never that the fork was unclear, it was that the fork existed in the file whose
+        reader least needs one, and that every adopter session paid context for
+        instructions addressed to someone else.
+
+  - id: 12
+    title: STEAL.md addresses the taker
+    status: accepted
+    date: "2026-07-28"
+    context: >-
+      STEAL.md exists to streamline an outside agent lifting code from this repository.
+      As written it opened with the curation protocol — blessing criteria, marker
+      syntax, enrichment on commit — which is instruction for agents working in this
+      tree, and the taker had to read past the maintainer's manual to assemble their own
+      path from fragments: manifest location at the top, validation in the middle,
+      licences near the end. The file served its second audience first.
+    decision:
+      steal_md_is_the_taking_path: >-
+        Rewritten to address the taker in second person, in order of what they do: open
+        the manifest, check the licence for the path, recheck the row against the file,
+        take the whole unit. The bans and the licence table stay, because they are the
+        taker's concerns. The invariant that a missing manifest means nothing is safe to
+        steal stays stated here, where validate_helpers.py's check assumes it.
+      curation_moves_beside_the_manifest: >-
+        The protocol — criteria, markers, enrichment, the no-agent workflow, the sorted
+        table rule — is .steal/curation.md, next to the manifest it governs. STEAL.md,
+        the adopter guidance and MAINTAINERS.md point at it; the self-check's messages
+        name it.
+    consequences:
+      easier: >-
+        An agent that opens STEAL.md to take something reads only taking instructions,
+        and an agent curating reads only curation. Each file has one audience, which is
+        the same split decisions 3 and 11 made for the maintainer's material.
+      harder: >-
+        The protocol is one hop from the root. The hop is taken by the reader who is
+        working in the tree anyway, not by the visitor the root file exists for.
+      accepted_cost: >-
+        External links to sections that moved out of STEAL.md break. The file keeps its
+        root slot by the convention clause of decision 9.
+    alternatives_considered:
+      - >-
+        Reorder STEAL.md with the taking path first and curation below. Rejected: that
+        is the two-modes seam decision 11 just removed from AGENTS.md, reproduced in
+        the other root file agents read cold.
+
+  - id: 13
+    title: The vulnerability database is an input, not a service
+    status: accepted
+    date: "2026-07-29"
+    context: >-
+      Backlog id_6 asked for CVE auditing, and a CVE scanner is normally the least
+      reproducible thing in a pipeline. The advisory database updates continuously, so the
+      same lockfile passes on Monday and fails on Tuesday with no commit in between. That
+      is a weather report, not a verdict, and it sits badly beside the determinism
+      invariant every other check here satisfies.
+
+
+      The tension is real rather than rhetorical. A database frozen for reproducibility is
+      a database going stale, and a stale advisory set is exactly the thing this check
+      exists to catch.
+    decision:
+      the_database_is_downloaded_and_named: >-
+        `make setup-audit-dbs` fetches a snapshot into `.audit-cache/`, and that is the
+        only network call the audit makes. Every scan runs `--skip-db-update
+        --offline-scan` against exactly what was downloaded. The snapshot's own timestamp
+        is recorded in `.audit-cache/audit.json` and printed in the report's Dependency
+        posture section.
+      staleness_is_visible_rather_than_prevented: >-
+        Nothing forces a refresh, and nothing pretends the snapshot is current. What the
+        report carries is the snapshot's date, so a reader can see how old the advisory
+        set is and a changed verdict can be attributed — the code moved, or the
+        advisories did. Freezing without saying so would be the dishonest half of this.
+      trivy_and_syft_over_per_ecosystem_tools: >-
+        The item proposed pip-audit, npm audit and cargo audit in parallel. One scanner
+        covering every ecosystem means one pin, one database, one output format, and a
+        project holding three ecosystems gets the same treatment as one holding one.
+        syft produces the bill of materials that RWA-0032 needs anyway.
+      it_reports_and_never_gates: >-
+        Not on the commit hook, and the item said so first. A CVE published overnight is
+        not a reason a commit cannot be saved, and the placement rule in AGENTS.md is that
+        a check goes where it can see its subject matter.
+    consequences:
+      easier: >-
+        The verdict is reproducible in the sense this repository means it: same lockfiles
+        plus same snapshot yields the same answer on any machine. RWA-0031 gets a real
+        mechanism instead of an unpinned grype that never ran, and RWA-0032's "made
+        available to consumers" is satisfied by a committed docs/dependencies.md rather
+        than by a CI artefact with a retention window.
+      harder: >-
+        Two setup targets instead of none, and a database of about a gigabyte on disk.
+        A first session on a project with no dependency manifests pays that for nothing,
+        which is why the download is separate from `make setup` rather than part of it.
+      accepted_cost: >-
+        A snapshot nobody refreshes reports on advisories nobody refreshed. The date in
+        the report is the mitigation, and it is a weaker one than a gate would be. Stated
+        rather than engineered around.
+    alternatives_considered:
+      - >-
+        Let trivy update the database on every scan. Rejected: it makes the check
+        non-deterministic in the one way the whole repository is built to refuse, and it
+        puts a network call inside a check that is documented as offline.
+      - >-
+        Commit the database. Rejected on size, and it is a rebuildable input rather than a
+        source file. What is committed is everything derived from it.
+
+  - id: 14
+    title: make doctor is not a control
+    status: accepted
+    date: "2026-07-29"
+    context: >-
+      Backlog id_8 asked for an environment parity check: declared variables against the
+      environment, pinned runtimes against what is on PATH, declared write targets against
+      the filesystem. It is deterministic, offline, and calls no model — it satisfies every
+      structural requirement `controls/registry.yaml` imposes.
+
+
+      Which is exactly why it was worth deciding rather than defaulting. Something that
+      passes the registry's structural tests is not thereby a control, and the registry's
+      count is the number the report leads with.
+    decision:
+      it_stays_out_of_the_registry: >-
+        `make doctor` is a reproducibility check, not a security one. A missing environment
+        variable is a fact about a machine; no ISM control is about it, and mapping it to
+        one — ISM-0400 on environment segregation was the tempting stretch — would be a
+        mapping written to justify a row rather than read from the text. Adding it would
+        raise "controls with a mechanism" by one without adding any coverage, which is the
+        failure mode MAINTAINERS.md names as a bad change.
+      it_still_ships_and_still_reports: >-
+        A Makefile target, a step in `make first-session`, and its own job in the posture
+        workflow. Being outside the registry costs it nothing an adopter can feel.
+      mise_is_the_remedy_not_the_engine: >-
+        The check parses `mise.toml`, `.mise.toml` and `.tool-versions` in bash rather than
+        shelling out, so it works on the machine most likely to be wrong — the one where
+        mise is not installed yet. `mise doctor` is invoked only when mise is present, and
+        only as a note that never touches the exit code: it reports on mise's own
+        installation, which is about the developer's machine rather than this project.
+      it_reads_names_and_never_values: >-
+        Including from .env. The check compares which variables have a value, never what
+        the value is, so nothing it prints or logs can be a credential.
+    consequences:
+      easier: >-
+        The control count keeps meaning one thing. An adopter's agent can say "your
+        environment is ready" or name exactly what is missing, without either claim
+        touching the security posture.
+      harder: >-
+        A useful check with no home in the registry has to be documented somewhere a
+        reader will find it: docs/setup.md says in as many words that it is not a control
+        and why.
+      accepted_cost: >-
+        The distinction is a judgement, and nothing enforces it. The next check that is
+        deterministic, offline and useful will pose the same question, and the answer has
+        to be argued again rather than looked up.
+    alternatives_considered:
+      - >-
+        Map it to ISM-0400, development, testing, staging and production environments are
+        segregated. Rejected on reading the text: that control is about environments being
+        separate from one another, not about one environment matching its own declaration.
+        It is already claimed by RWA-0005, and stretching it here is precisely the class of
+        error the verification discipline section exists to prevent.
+
+  - id: 15
+    title: Decision 9's root test, applied to the two files that were never re-examined
+    status: accepted
+    date: "2026-07-29"
+    context: >-
+      Decision 9 reduced the root rule to one test — a file sits at the root only when a
+      tool or a convention reads it there — and applied it to the file that prompted the
+      review, security-report.md. Two files were never put through it, because neither had
+      come up: .secrets.baseline at the root, and .github/social-preview/, which is not at
+      the root but is in the other directory an adopter inherits wholesale.
+
+
+      The maintainer's reading on review was that the root still looks busy and that
+      .secrets.baseline is the clearest case of a file nobody had asked the question about.
+    decision:
+      the_baseline_moves_to_controls: >-
+        detect-secrets' default filename is .secrets.baseline at the root, but this
+        repository does not rely on the default: .pre-commit-config.yaml passes
+        `--baseline controls/.secrets.baseline` explicitly. Nothing reads the path at the
+        root, so under decision 9 it has no root slot. controls/ is where it belongs on the
+        positive test rather than by elimination — it is RWA-0010's configuration, sitting
+        beside controls/rules/, which is the configuration of the other four.
+      the_social_preview_moves_to_runwai: >-
+        The card is runwAI's own branding. A project built from this template is not called
+        runwAI and will never unfurl this image, which makes it decision 8's membership
+        test in the direction that is easy to miss: not "does this serve maintainers" but
+        "does an adopter lose anything when .runwai/ is pruned". They lose nothing here, and
+        they gain the removal of six npm packages — two Fontsource faces, playwright and its
+        transitives — that docs/dependencies.md was listing as their dependencies because
+        the render script sat in .github/.
+      github_directory_is_not_a_synonym_for_maintainer: >-
+        .github/scripts/ stays where it is. Backlog id_1's placement rule already says
+        verify.py is adopter-facing and belongs there; the workflows and the report
+        generators are the adopter's too. What moved is the one thing in that directory
+        that was about runwAI rather than about the repository runwAI becomes.
+    consequences:
+      easier: >-
+        The root listing loses an entry, and the adopter's bill of materials loses its only
+        six npm rows — a template whose SBOM advertises fonts for a logo the adopter is
+        about to delete was miscounting what they depend on. Both moves are the existing
+        rules applied, not new rules, so neither adds a test to argue about.
+      harder: >-
+        Anyone who knows detect-secrets expects .secrets.baseline at the root and will not
+        find it there. The pre-commit entry names the path, MAINTAINERS.md's structure map
+        carries a line saying why, and a regenerated baseline written with the default flag
+        would land at the root and be silently ignored.
+      accepted_cost: >-
+        docs/dependencies.md had to be regenerated for a path change that altered no
+        package, no version and no licence. That is the same one-commit coupling every path
+        move here has carried, and it is cheaper than a generated file that disagrees with
+        the tree.
+    alternatives_considered:
+      - >-
+        Leave .secrets.baseline at the root on the convention clause of decision 9. Rejected
+        on the facts: the clause is about a convention that *reads* the path — AGENTS.md,
+        llms.txt, LICENSE — and detect-secrets is being told where to look. A filename most
+        repositories happen to put at the root is recognition, not a read.
+      - >-
+        Move the social preview to .runwai/docs/. Rejected: it is a small build with a
+        lockfile, a renderer and an output, not a document, and burying a package.json
+        inside a documentation directory is how the audit finds it and nobody else does.
+      - >-
+        Delete the social preview and set the card by hand at GitHub. Rejected: the PNG is a
+        build output with a pinned, reproducible input, and that reproducibility is the
+        whole reason the directory exists rather than an image someone once exported.
+
+  - id: 16
+    title: What the AGENTS.md audit was right about, and what it was wrong about
+    status: accepted
+    date: "2026-07-29"
+    context: >-
+      An external audit of root AGENTS.md (.runwai/docs/) benchmarked the file against
+      published AGENTS.md guidance and produced twelve prioritised recommendations. Its
+      reading of the file's strengths was accurate and its three top-priority fixes were
+      not all adoptable, so the triage is recorded rather than the report treated as a
+      work list. Two of its findings were checked against primary sources before being
+      accepted or rejected; one turned out to be the most valuable thing in it.
+    decision:
+      the_claude_md_bridge_is_the_real_finding: >-
+        Ranked eighth of twelve, and it was a live defect. Anthropic's memory documentation
+        states plainly that Claude Code reads CLAUDE.md and does not read AGENTS.md, and
+        names the `@AGENTS.md` import as the supported bridge. This repository shipped
+        .claude/commands/ adapters for Claude Code while its entire guide was unreachable
+        by it. CLAUDE.md is now that one-line import, and holds no content of its own for
+        the same reason the slash-command adapters hold none.
+      structure_over_prose_is_adopted: >-
+        "While you build" is now Always / Ask first / Never, which is MAINTAINERS.md's
+        existing shape rather than the audit's imported one, and the scattered never-edit
+        rules are consolidated into a "Don't touch" table. Both were fair: eight rules in
+        one prose paragraph is a list someone declined to write. Definitions the audit
+        asked for are inline now — deterministic as same input, same output, no model, no
+        network, no clock; "large" as a dependency, a control's scope, the Makefile or
+        .pre-commit-config.yaml, or more than about three files.
+      the_inline_command_table_is_adopted_only_as_an_index: >-
+        The audit's highest-priority fix was a full command table in AGENTS.md, against the
+        file's stated reason for delegating. The complaint underneath it was real — an agent
+        reading only AGENTS.md saw exactly one command — so there is now a target table with
+        no flags and no exit codes, and a line saying the canonical page is canonical. The
+        table the audit supplied is itself the argument for that limit: it labelled
+        `pre-commit run --all-files` as stopping a commit, which it does not, and its
+        "Don't touch" sample cited `.runwai/report.md`, a path that has not existed since
+        decision 8. A second command surface drifted inside the document recommending it.
+      removing_the_coverage_numbers_is_rejected: >-
+        The audit asked for "36 of 1101 controls are mapped, most partial" to come out of
+        AGENTS.md as product documentation, keeping only "do not claim coverage the checks
+        do not provide". The number *is* the mechanism; an unquantified "limited coverage"
+        is the vague claim it exists to replace, and honest coverage is the second core
+        principle in MAINTAINERS.md. The instruction now says to state the numbers. The
+        audit also misquoted them as 35, which is the failure mode in miniature.
+      the_readme_duplication_is_deliberate_and_stays: >-
+        Recommendation 5 asked for the first-session steps and the merge-blocking messaging
+        to be cut from AGENTS.md in favour of pointers. The two copies are in different
+        registers on purpose: AGENTS.md gives the agent its instructions, README.md gives
+        the human the checklist to hold the agent to, under the heading "so you can tell
+        whether your agent actually did it". The audit's own section 3.1 notices this in its
+        last row and recommends removal anyway. MAINTAINERS.md now names the coupling so the
+        two are kept in step rather than deduplicated.
+      nested_agents_md_files_are_rejected: >-
+        Recommendation 10 asked for AGENTS.md files under controls/ and agents/. Everything
+        in this tree ships to an adopter, so three files would be three files to rewrite in
+        step 7 and three more chances to leave one describing a template. agents/README.md
+        already indexes that layer. AGENTS.md now states the absence and calls adding one a
+        decision, which is the part the audit was right about: silence read as an oversight.
+      lint_commands_for_configs_nothing_here_runs_are_rejected: >-
+        Recommendation 3 asked for `npx @biomejs/biome check .` in AGENTS.md. runwAI has no
+        JS or TS, the config may be deleted in step 3, and documenting a command for a file
+        that may not exist is the confident-index failure this repository refuses. The file
+        says instead that the configs are unexercised here and to run them the way the
+        adopter's project does.
+    consequences:
+      easier: >-
+        Claude Code now reads the guide at all, which is a larger correction than any of the
+        eleven recommendations ranked above it. An agent reading only AGENTS.md can name the
+        targets, knows which paths are generated, and has thresholds instead of adjectives.
+      harder: >-
+        The target table is a second place a target name appears, so a renamed target is now
+        two edits. That is the cost the delegation rule was avoiding, accepted for eight rows
+        of names with no flags in them.
+      accepted_cost: >-
+        AGENTS.md is about 307 lines against the 200 Anthropic's guidance suggests. Roughly
+        127 of those are the first-session section, which step 7 deletes at the end of the
+        only session that reads it, so the file an adopter actually keeps is around 180 —
+        under the limit for every session after the first, and over it for the one session
+        where the instructions are the point. That is the right way round, but it is a
+        judgement rather than a measurement, and prose was tightened rather than cut to
+        reach it.
+    alternatives_considered:
+      - >-
+        Treat the report as a work list and implement all twelve. Rejected on reading it: two
+        recommendations contradict recorded decisions with no new argument, one would remove
+        the honesty mechanism the project exists for, and the sample content in the
+        highest-priority one contains a stale path and a wrong claim about what stops a
+        commit. An audit is evidence, not an instruction.
+      - >-
+        Reject the report wholesale because its own examples do not check out. Rejected: the
+        CLAUDE.md finding was correct, verifiable against a primary source, and had been
+        missed by every session in this repository. The scoring was wrong, not the finding.
+
+  - id: 17
+    title: The adopter is asked about the reuse layer, not assumed out of it
+    status: accepted
+    date: "2026-07-29"
+    context: >-
+      AGENTS.md's first session told the setup agent to offer deleting .runwai/ and to delete
+      unneeded root configs, and said nothing at all about STEAL.md and .steal/. The
+      maintainer's objection was that silence there defaults to a guess: the layer reads like
+      template furniture, so an agent tidying up removes it, and an adopter who did want to
+      publish reusable code never knew there was a protocol for it.
+
+
+      Checking the code made it worse than an omission. check_steal in validate_helpers.py
+      errored outright on a missing STEAL.md, so an adopter who *did* want it gone got a red
+      build and no clean way to comply. The instruction to ask had no honest yes-remove path
+      to offer.
+    decision:
+      the_agent_asks_in_the_users_terms: >-
+        A first-session step of its own, phrased as "do you want other people to be able to
+        reuse pieces of this?" rather than as a question about a file. Three answers with
+        three actions: keep both and it becomes theirs to curate; delete both in one commit
+        with the llms.txt entries and README references; or, undecided, keep it, because it
+        is inert until someone writes a marker and removing it later is one commit.
+      both_gone_is_a_decision_one_gone_is_an_error: >-
+        check_steal now errors on a missing STEAL.md only when .steal/ is still present. The
+        shape is check_root_configs', where an absent config is a legitimate deletion and a
+        README row left behind is the failure — a check that cannot tell a completed removal
+        from a broken one teaches its user to switch it off.
+      the_default_stays_present: >-
+        Shipping it absent would invert the problem: an adopter who wanted the protocol would
+        have to know it existed to ask for it, which is the "you shouldn't need to know what
+        to ask for" failure stated as a principle in MAINTAINERS.md.
+    consequences:
+      easier: >-
+        The one part of the tree whose value is a fact about the adopter's intentions is now
+        settled by asking them. Removal is a supported outcome with a check that confirms it
+        was completed rather than abandoned halfway.
+      harder: >-
+        The first session is one question longer, against the one-step onboarding obligation.
+        It is a question with a plain-language answer and a stated default, which is the form
+        that obligation permits.
+      accepted_cost: >-
+        A retained manifest still carries runwAI's five rows and the prose arguing why the
+        list is short — true of the files an adopter inherits, and theirs to rewrite as they
+        bless their own. Curating someone else's index is a worse first impression than an
+        empty one, and it is not yet solved.
+    alternatives_considered:
+      - >-
+        Add STEAL.md and .steal/ to the step-3 root-configs table. Rejected: that table is
+        "delete it when nothing here uses it", a question about the tree. This one is a
+        question about the adopter's intentions, and collapsing the two would get it answered
+        by inspection rather than by asking.
+      - >-
+        Empty the manifest on adoption, leaving the protocol with no rows. Rejected for now:
+        the five rows describe files the adopter inherits and still has, so the index is true
+        on day one, and an empty table teaches the protocol less well than a populated one.
+        Recorded as the accepted cost above rather than settled.
+
+  - id: 18
+    title: A check runs by default only if its tooling binds to .venv/
+    status: accepted
+    date: "2026-08-08"
+    context: >-
+      An adopter reported that the documented dependency-audit sequence fails when run
+      verbatim: agents/running-the-checks.md put `export PATH="$PWD/.audit-cache/bin:$PATH"`
+      after `make setup-audit-dbs`, but that target is trivy downloading trivy's own
+      database, so it exited 2 with "trivy is not installed" — advising the target the reader
+      had just run. The Makefile put .venv/bin on PATH for every recipe and had never done
+      the same for .audit-cache/bin.
+
+
+      Fixing the ordering exposed the larger question behind it. `make first-session` ran
+      `make audit || true`, and on a machine without the scanners — which is every machine
+      until someone runs two more targets, one of which pulls about a gigabyte — that is an
+      exit 2 discarded by `|| true`. The adopter saw a step that ran and a session that
+      continued, and was told nothing about their dependency posture being unmeasured. An
+      absent check and a clean check produced the same silence, which is the coverage lie
+      this repository exists to refuse, arriving through the door of a convenience.
+    decision:
+      the_venv_test_decides_the_mode: >-
+        A check is on by default when `make setup` can bind its tooling to .venv/. pip pins
+        semgrep, detect-secrets and pre-commit into the project's own environment, so those
+        run everywhere; doctor needs no install at all and passes trivially. A check whose
+        tool cannot be bound that way is environment-constrained and off by default. The test
+        is mechanical on purpose — the alternative criterion is how important the check is,
+        and importance is exactly the argument that keeps a constrained check switched on
+        until it fails on a third of the machines that adopt the template.
+      two_checks_qualify_today: >-
+        The dependency audit — trivy and syft are architecture-specific release binaries, and
+        the database is ~1 GB from a container registry that corporate and cloud networks
+        routinely block — and reproducing keyhog locally, a Rust binary installed by piping a
+        script to a shell. Both were already installed outside .venv/, which is what made the
+        classification a description rather than a new rule. (Decision 19 later removed keyhog;
+        the dependency audit is the only environment-constrained check now.)
+      off_is_louder_than_the_swallowed_exit_code: >-
+        CHECK_MODE=default makes first-session print what did not run, what that leaves
+        unknown, and the one command that turns it on; docs/security-report.md states the
+        same under Dependency posture. This is the condition on the whole decision: an "off
+        by default" that reduced what the reader is told would be a weakening wearing a
+        design decision as a costume.
+      naming_the_target_is_the_opt_in: >-
+        `make audit` always runs when asked for. CHECK_MODE governs only whether the default
+        session attempts it, so nothing is unreachable and no second command has to be
+        learned to undo the default.
+      ci_is_unaffected: >-
+        A runner has the architecture, the egress and the disk, so posture.yml installs the
+        scanners and downloads the database as ordinary steps on every push. The reason for
+        the local default is the adopter's laptop and their employer's proxy, and neither is
+        a property of a runner.
+    consequences:
+      easier: >-
+        The documented sequence now works verbatim, because every make target sees
+        .audit-cache/bin the way it already saw .venv/bin. A first session on a restricted
+        network produces a plain statement about what is unknown instead of a discarded exit
+        code, and a new check has a one-answer test for where it belongs rather than a
+        judgement to re-argue.
+      harder: >-
+        A default session no longer produces docs/dependencies.md, so an adopter who never
+        opts in has no bill of materials either. That was already true in practice — the SBOM
+        needs syft, which the same two targets install — but it is now true by design and has
+        to be said rather than discovered.
+      accepted_cost: >-
+        Off by default is one more thing the adopter can leave undone, and a notice is a
+        weaker mechanism than a check that runs. The mitigation is that the notice states the
+        gap in the terms that matter to them — you do not know whether your dependencies
+        carry known vulnerabilities — rather than naming a target that failed.
+    alternatives_considered:
+      - >-
+        Fix only the ordering in agents/running-the-checks.md, as the report suggested. Correct
+        and insufficient: the same reader still meets `make audit` failing inside
+        first-session, and the prose fix leaves the Makefile inconsistent with itself about
+        which directories a recipe can see.
+      - >-
+        Put the two audit setup targets into `make setup`. Rejected on decision 13's ground:
+        a gigabyte downloaded during the first command of the first session, for a project
+        that may hold no dependency manifests at all.
+      - >-
+        Leave `make audit || true` in first-session and improve audit.py's message. Rejected:
+        the message was already reasonable and was never the problem. `|| true` discards the
+        exit code, so the run reads as a step that completed, and no wording inside a
+        discarded result changes what the session as a whole appears to have established.
+      - >-
+        Express the mode as an environment variable read by the scripts themselves, so it
+        applies outside make. Rejected as more surface for no gain here: a mode that can be
+        set invisibly in a shell is a verdict whose scope a reader cannot see, and the
+        constrained checks are all invoked through make targets today.
+
+  - id: 19
+    title: One secret scanner — keyhog removed, detect-secrets runs in CI too
+    status: accepted
+    date: "2026-09-20"
+    supersedes: 7
+    context: >-
+      Decision 7 split secret scanning across two tools: detect-secrets on the commit hook,
+      and keyhog in CI for a wider detector corpus and a reachable-history walk. That was
+      one more thing baked into the template — a second scanner, referenced as a
+      third-party GitHub Action pinned to a commit SHA, with its own exit-code table, its
+      own baseline format, and a local-reproduction path that piped a shell installer for a
+      Rust binary. The maintainer's call was to stop carrying it.
+
+
+      The cost decision 7 accepted was already the sharp one: two corpora meant the local
+      hook and the CI job could disagree, so a commit could pass locally and be flagged on
+      push. Removing keyhog removes that divergence by construction.
+    decision:
+      detect_secrets_runs_in_both_places: >-
+        The CI `secrets` job now runs detect-secrets over every tracked file, at the same
+        pinned version and against the same controls/.secrets.baseline the commit hook uses.
+        One tool at one version in both places, so the verdicts cannot diverge; CI is the
+        wider net only in reach — the whole tree rather than one commit's staged files —
+        which still catches a secret in a file that arrived behind `git commit --no-verify`.
+      the_history_walk_is_the_admitted_loss: >-
+        detect-secrets scans working-tree files, not the commit graph, so the reachable-
+        history pass keyhog did is gone: a credential committed and later deleted is no
+        longer caught. That leg of RWA-0010 is now unmapped, and it is stated as such in the
+        RWA-0010 registry note, in docs/setup.md, in status.md and in running-the-checks.md,
+        rather than left for an empty CI result to read as a clean history.
+      determinism_is_simpler_now: >-
+        keyhog's `--verify`, `--backend cpu` and severity-floor arguments existed to keep a
+        second tool deterministic. None is needed once the tool is gone. detect-secrets is
+        `language: python` with a pinned additional_dependency, so it was never the
+        onboarding or PATH-pinning problem keyhog's `language: system` hook was.
+    consequences:
+      easier: >-
+        One secret scanner, one baseline, one version to bump, and local and CI verdicts
+        that agree by construction. The dependency audit is now the only environment-
+        constrained check, so the Check-modes table in running-the-checks.md lists one row
+        rather than two.
+      harder: >-
+        No reachable-history scan anywhere in the repository. A secret force-pushed and then
+        removed within history is caught by neither the hook nor CI. An adopter who needs
+        that coverage has to add a history-walking scanner back deliberately.
+      also: >-
+        The keyhog rows leave docs/dependencies.md (a github-action the SBOM parsed out of
+        the workflow) and .runwai/docs/pinning.md's verified-pins table on regeneration and
+        edit respectively; decision 7 is marked superseded rather than deleted, because the
+        log records why the template was shaped a given way, including the shapes it left.
+    alternatives_considered:
+      - >-
+        Keep keyhog but make it opt-in rather than baked in. Rejected: an off-by-default
+        secret scanner in CI has measured nothing until someone turns it on, which is the
+        "off is not clean" trap this repository refuses — and it keeps the two-corpus
+        divergence for whoever does enable it.
+      - >-
+        Replace keyhog with another history-walking scanner (gitleaks, trufflehog). Rejected
+        as scope: the maintainer asked to remove keyhog, not to re-litigate which second
+        scanner to carry. Adding one back is a deliberate future decision, not this one.
