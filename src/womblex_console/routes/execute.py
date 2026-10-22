@@ -1,4 +1,4 @@
-"""``/api/execute`` — the Execution Controls (docs/functional_requirements.md, Requirement 19).
+"""``/api/execute`` — the Execution Controls (docs/requirements.md, Requirement 19).
 
 The one writable-to-a-run surface in the console. ``GET /status`` is a
 cheap, network-free read of whether this deployment can dispatch work (and

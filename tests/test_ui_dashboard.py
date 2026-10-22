@@ -92,7 +92,7 @@ class _BrokenQueue(_MissingTableQueue):
 
 class TestDashboardApi:
     """The Dashboard reads the queue when there is one and the run's own
-    per-stage checkpoints always (docs/functional_requirements.md, Requirement 16). These exercise
+    per-stage checkpoints always (docs/requirements.md, Requirement 16). These exercise
     the queue-less shape — a plain local deployment — and the checkpoint
     half, which is the same in both.
     """

@@ -1,7 +1,7 @@
 import { errorDetail } from './http';
 import type { QueueThroughput, QueueWorker } from './resources';
 
-// The Dashboard (functional_requirements.md, Requirement 16). Two sources, both already written
+// The Dashboard (requirements.md, Requirement 16). Two sources, both already written
 // by the pipeline: the job queue (when a DSN is configured) and the per-stage
 // checkpoints inside the selected run. `queue` is null whenever there is no
 // queue to read — no DSN, or the connection failed — and `queue_error` says

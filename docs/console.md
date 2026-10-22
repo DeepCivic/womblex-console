@@ -4,6 +4,11 @@ An operator and debugging utility for [Womblex](https://github.com/DeepCivic/wom
 
 The console started life inside Womblex (`womblex ui`) and was split out so Womblex stops shipping it. It was seeded from that history, so `git log` on `src/womblex_console/` and `ui/` runs back through it.
 
+## Documents
+
+- [requirements.md](requirements.md): what the console must do (Requirements 15 to 21, kept from Womblex's numbering).
+- [../DESIGN.md](../DESIGN.md) and [design-notes.md](design-notes.md): the design system, and the approaches that did not hold.
+
 ## Relationship to Womblex
 
 Dependency runs one way. The console depends on a pinned Womblex release; Womblex never imports, tests or documents the console. When Womblex changes, this repository moves its pin and its imports.

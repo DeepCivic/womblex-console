@@ -1,4 +1,4 @@
-"""The Dashboard's read model (docs/functional_requirements.md, Requirement 16).
+"""The Dashboard's read model (docs/requirements.md, Requirement 16).
 
 Two sources, both already written by the pipeline:
 
@@ -151,7 +151,7 @@ def queue_section(
     creation).
 
     Not prefixed private: the Resources Console reuses this as its queue
-    connectivity test and fleet/queue-depth read (docs/functional_requirements.md, Requirement 20)
+    connectivity test and fleet/queue-depth read (docs/requirements.md, Requirement 20)
     rather than reimplementing the same connect-and-read.
     """
     if not settings.db_dsn:

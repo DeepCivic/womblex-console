@@ -1,4 +1,4 @@
-"""Tests for the Resources Console (docs/functional_requirements.md, Requirement 20).
+"""Tests for the Resources Console (docs/requirements.md, Requirement 20).
 
 ``TestResourcesApi`` needs none of the shared console fixtures, since every
 case builds its own ``TestClient`` directly.
@@ -17,7 +17,7 @@ from womblex_console.deps import resolve_settings
 
 class TestResourcesApi:
     """The Resources Console reuses existing library reads rather than adding
-    detection logic of its own (docs/functional_requirements.md, Requirement 20): `GET /api/resources`
+    detection logic of its own (docs/requirements.md, Requirement 20): `GET /api/resources`
     is cheap and network-free; `POST /test/*` is the live check behind each
     card's action button.
     """

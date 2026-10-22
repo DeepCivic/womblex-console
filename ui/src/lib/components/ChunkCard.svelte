@@ -1,5 +1,5 @@
 <script lang="ts">
-	// One chunk (functional_requirements.md, Requirement 18): its text with PII spans highlighted
+	// One chunk (requirements.md, Requirement 18): its text with PII spans highlighted
 	// inline, plus the entity and money overlays that resolved to this chunk.
 	//
 	// Only PII spans are chunk-relative — the reader derives their `start`/`end`

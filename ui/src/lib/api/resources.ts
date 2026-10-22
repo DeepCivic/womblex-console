@@ -1,6 +1,6 @@
 import { errorDetail } from './http';
 
-// The Resources Console's connection cards (functional_requirements.md, Requirement 20). Cheap,
+// The Resources Console's connection cards (requirements.md, Requirement 20). Cheap,
 // network-free reads — each card's live check is a separate `test*` call.
 export interface StoreOptions {
 	credentials_configured: boolean;
@@ -89,7 +89,7 @@ export async function testIngest(fetchImpl: typeof fetch = fetch): Promise<Reach
 }
 
 // Fleet + queue-depth state, from the same `JobQueue` views the Dashboard
-// reads (functional_requirements.md, Requirement 16) — the queue card's "test" action doubles as
+// reads (requirements.md, Requirement 16) — the queue card's "test" action doubles as
 // that read. `WorkerState` / `Throughput` field names mirror `cloud/queue.py`
 // exactly (`asdict()` is what the API serialises).
 export interface QueueWorker {

@@ -1,4 +1,4 @@
-"""The Resources Console's read model (docs/functional_requirements.md, Requirement 20).
+"""The Resources Console's read model (docs/requirements.md, Requirement 20).
 
 Three connection cards, none backed by new detection logic — connection
 *testing* already exists as library code, so this module's job is only to

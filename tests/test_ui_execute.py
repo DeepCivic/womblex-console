@@ -60,7 +60,7 @@ def _seed_store_inputs(store_root: Path, prefix: str, names: list[str]) -> None:
 
 class TestExecuteApi:
     """Dispatch requires a store, an ingest location, and a DSN
-    (docs/functional_requirements.md, Requirement 19)."""
+    (docs/requirements.md, Requirement 19)."""
 
     def test_status_reflects_the_flags(self, tmp_path: Path) -> None:
         client = TestClient(create_app(output_root=tmp_path))

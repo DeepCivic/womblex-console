@@ -165,7 +165,7 @@ def get_preset(name: str) -> Preset | None:
 
 
 # ---------------------------------------------------------------------------
-# Operator-saved presets (docs/functional_requirements.md, Requirement 19)
+# Operator-saved presets (docs/requirements.md, Requirement 19)
 # ---------------------------------------------------------------------------
 #
 # Besides the built-ins above (code), an operator can *save* a composed config
@@ -179,7 +179,7 @@ def get_preset(name: str) -> Preset | None:
 
 #: The store prefix operator-saved presets live under in remote mode — a
 #: sibling of ``runs/`` in the same bucket, so the container
-#: stays ``read_only`` (docs/functional_requirements.md, Requirement 19).
+#: stays ``read_only`` (docs/requirements.md, Requirement 19).
 PRESETS_DIRNAME = "presets"
 
 _PRESET_SUFFIX = ".preset.json"

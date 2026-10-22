@@ -27,7 +27,7 @@ class UISettings:
     checkpoints inside the run itself.
 
     ``presets_dir`` is where the Pipeline Composer *saves* operator-authored
-    presets (docs/functional_requirements.md, Requirement 19) — one JSON file per preset. It applies
+    presets (docs/requirements.md, Requirement 19) — one JSON file per preset. It applies
     to *local* mode only, it is local-mode only: remote mode has no
     equivalent field because it always writes presets under the store's own
     ``presets/`` prefix, a sibling of ``runs/`` in the same

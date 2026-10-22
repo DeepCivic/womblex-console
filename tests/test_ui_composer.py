@@ -15,7 +15,7 @@ _NO_DATASET: dict = {}
 
 class TestComposerApi:
     """The Pipeline Composer reads no run — `config.py` and
-    `cloud/stage_contracts.py` are static (docs/functional_requirements.md, Requirement 19), so
+    `cloud/stage_contracts.py` are static (docs/requirements.md, Requirement 19), so
     `api_client`'s local/remote parametrisation is irrelevant here; a bare
     `TestClient` is enough.
     """
@@ -238,7 +238,7 @@ class TestComposerApi:
 
 
 class TestComposerSavePresets:
-    """Saving a composed config as a named preset (docs/functional_requirements.md, Requirement 19).
+    """Saving a composed config as a named preset (docs/requirements.md, Requirement 19).
 
     Parametrised over local (a writable `presets_dir`) and remote (the store's
     own `presets/` prefix, a sibling of `runs/`). A store-backed console therefore

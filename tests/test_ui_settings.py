@@ -133,7 +133,7 @@ class TestStoreUnreachable:
 
 
 class TestSpaMount:
-    """The console serves the built SPA (docs/functional_requirements.md, Requirement 15) when one is
+    """The console serves the built SPA (docs/requirements.md, Requirement 15) when one is
     present alongside it, and falls back to the API-only shape when not —
     the same image serves cloud and local deployments.
     """

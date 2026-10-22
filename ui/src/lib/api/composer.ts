@@ -1,6 +1,6 @@
 import { detailToMessage, errorDetail, JSON_POST } from './http';
 
-// The Pipeline Composer (functional_requirements.md, Requirement 19). Neither read is run-scoped:
+// The Pipeline Composer (requirements.md, Requirement 19). Neither read is run-scoped:
 // the DAG comes from `STAGE_CONTRACTS` and the form's fields from
 // `WomblexConfig`'s JSON Schema, so the frontend hand-codes neither the stage
 // ordering nor the config field list.

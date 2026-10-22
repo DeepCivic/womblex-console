@@ -20,7 +20,7 @@ export default tseslint.config(
 	},
 	{
 		rules: {
-			// Static shell routes (docs/ui-plan.md merge 4) — plain `href`s, not
+			// Static shell routes — plain `href`s, not
 			// SvelteKit's typed-router `resolve()` wrapper.
 			'svelte/no-navigation-without-resolve': 'off'
 		}

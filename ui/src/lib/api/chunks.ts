@@ -1,6 +1,6 @@
 import { errorDetail } from './http';
 
-// The Chunk Inspector's payload for one document (functional_requirements.md, Requirement 18):
+// The Chunk Inspector's payload for one document (requirements.md, Requirement 18):
 // chunks plus the overlay sidecars, all joined on `source_hash` and
 // `chunk_index`. Field names mirror the store schemas the reader serialises
 // (`CHUNKS_SCHEMA`, `ENTITY_SCHEMA`, `PII_SPANS_SCHEMA`, `MONEY_SPANS_SCHEMA`,
