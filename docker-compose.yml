@@ -1,0 +1,39 @@
+# The console against an existing Womblex deployment. It brings up no Postgres
+# or MinIO of its own: point it at the store and queue your workers already use.
+#
+#   WOMBLEX_STORE_URI=s3://womblex WOMBLEX_DB_DSN=postgresql://… docker compose up
+services:
+  ui:
+    image: ${WOMBLEX_CONSOLE_IMAGE:-ghcr.io/deepcivic/womblex-console:latest}
+    environment:
+      # The run source (exactly one of a store or a local output root) and the
+      # queue the Dashboard and Execution panels read.
+      WOMBLEX_STORE_URI: ${WOMBLEX_STORE_URI:?set WOMBLEX_STORE_URI to the store your workers publish to}
+      WOMBLEX_DB_DSN: ${WOMBLEX_DB_DSN:-}
+      # Source documents live on their own location, disjoint from the store's
+      # runs/ output. Without one the Execution Controls cannot dispatch.
+      WOMBLEX_INGEST_URI: ${WOMBLEX_INGEST_URI:-}
+      # Empty endpoint means real AWS S3; set it for MinIO or another S3 API.
+      WOMBLEX_S3_ENDPOINT: ${WOMBLEX_S3_ENDPOINT:-}
+      # Store credentials are read store-specifically so the ambient AWS_*
+      # variables can stay unset and an instance role keeps resolving.
+      WOMBLEX_S3_ACCESS_KEY_ID: ${WOMBLEX_S3_ACCESS_KEY_ID:-}
+      WOMBLEX_S3_SECRET_ACCESS_KEY: ${WOMBLEX_S3_SECRET_ACCESS_KEY:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      # The Resources panel reports which Isaacus deployment is declared.
+      ISAACUS_API_KEY: ${ISAACUS_API_KEY:-}
+      ISAACUS_SAGEMAKER_ENDPOINTS: ${ISAACUS_SAGEMAKER_ENDPOINTS:-}
+      # A digest is content-addressed after the push, so the image cannot name
+      # itself; the deployment hands the reference in.
+      WOMBLEX_IMAGE_REF: ${WOMBLEX_CONSOLE_IMAGE:-ghcr.io/deepcivic/womblex-console:latest}
+    ports:
+      - "8080:8080"
+    # The console reads artefacts and writes nothing to its own image: run
+    # requests land in the store, presets under the store's own prefix. The one
+    # exception is a tmpfs for /tmp, where a store-backed read stages the
+    # parquet it is about to open.
+    read_only: true
+    tmpfs:
+      - /tmp

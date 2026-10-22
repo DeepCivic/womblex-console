@@ -13,3 +13,13 @@
 # command recreates it. The pins that decide its contents are in the Makefile, which is
 # committed — so the environment is disposable and the versions are not.
 .venv/
+
+# Python build and test output.
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+pytest.log
+build/
+dist/
